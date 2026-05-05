@@ -1,0 +1,65 @@
+# Environment files — NEVER commit these
+.env
+*.env
+backend/.env
+
+
+# Build outputs
+backend/build/
+backend/.gradle/
+*.jar
+*.class
+
+# Gradle
+.gradle/
+build/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.suo
+*.user
+
+# Docker
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dependencies
+node_modules/
+vendor/
+
+# Explicitly include mobile app source despite local .gitignore
+!mobile/BykeUser/src/
+!mobile/BykeRider/src/
+!mobile/BykeUser/package.json
+!mobile/BykeRider/package.json
+!mobile/BykeUser/android/
+!mobile/BykeRider/android/
+!mobile/BykeUser/ios/
+!mobile/BykeRider/ios/
+
+
+# Sensitive files
+.env
+google-services.json
+client_secret_*.json
+
+# Build artifacts
+build/
+*.jar
+*.apk
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+.DS_Store
+
+# IDE settings
+.vscode/
+.idea/

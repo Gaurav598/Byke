@@ -1,0 +1,87 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: byke-postgres
+    environment:
+      POSTGRES_DB: byke
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - byke-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: byke-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - byke-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: byke-kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_HEAP_OPTS: "-Xmx256m -Xms128m"
+    depends_on:
+      - zookeeper
+    networks:
+      - byke-network
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: byke-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      KAFKA_HEAP_OPTS: "-Xmx128m -Xms64m"
+    ports:
+      - "2181:2181"
+    networks:
+      - byke-network
+
+  backend:
+    image: aditya2004123/byke-backend:latest
+    container_name: byke-backend
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      FIREBASE_CREDENTIALS_PATH: /opt/byke/firebase-service-account.json
+      FIREBASE_API_KEY: ${FIREBASE_API_KEY:-AIzaSyB310m_HtNGQYcwAAqpfH_rvNs3aKpCERI}
+    volumes:
+      - ./firebase-service-account.json:/opt/byke/firebase-service-account.json
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+    networks:
+      - byke-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  byke-network:
+    driver: bridge

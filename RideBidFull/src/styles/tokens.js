@@ -1,0 +1,31 @@
+export const Colors = {
+  bgPrimary: '#FFFFFF',
+  bgSecondary: '#F5F5F3',
+  bgTertiary: '#EFEFED',
+  bgSuccess: '#EAF3DE',
+  bgInfo: '#E6F1FB',
+  bgWarning: '#FAEEDA',
+  bgDanger: '#FCEBEB',
+  textPrimary: '#1A1A18',
+  textSecondary: '#6B6B67',
+  textTertiary: '#9B9B96',
+  textSuccess: '#27500A',
+  textInfo: '#0C447C',
+  textWarning: '#633806',
+  textDanger: '#791F1F',
+  borderTertiary: 'rgba(0,0,0,0.1)',
+  borderSecondary: 'rgba(0,0,0,0.2)',
+  borderSuccess: '#639922',
+  borderInfo: '#185FA5',
+  green: '#639922',
+  red: '#E24B4A',
+  blue: '#378ADD',
+  amber: '#BA7517',
+  purple: '#534AB7',
+  mapBg: '#E8F0D8',
+  mapRoad: '#FFFFFF',
+  mapRoadMinor: '#F0EDE8',
+};
+
+export const Spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 };
+export const Radius = { sm: 6, md: 8, lg: 12, xl: 16, full: 999 };
