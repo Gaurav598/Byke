@@ -133,8 +133,8 @@ export default function RidersPage() {
                     <div className="text-sm text-gray-500">{rider.vehicleRegistrationNumber}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadge(rider.approvalStatus)}`}>
-                      {rider.approvalStatus}
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadge(rider.status)}`}>
+                      {rider.status}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -145,7 +145,7 @@ export default function RidersPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex gap-2">
-                      {rider.approvalStatus === 'PENDING' && (
+                      {rider.status === 'PENDING' && (
                         <>
                           <button
                             onClick={() => handleAction('approve', rider.id)}
@@ -163,7 +163,7 @@ export default function RidersPage() {
                           </button>
                         </>
                       )}
-                      {rider.approvalStatus === 'ACTIVE' && (
+                      {rider.status === 'ACTIVE' && (
                         <button
                           onClick={() => handleAction('suspend', rider.id)}
                           className="text-orange-600 hover:text-orange-900"
@@ -172,7 +172,7 @@ export default function RidersPage() {
                           <Ban className="w-5 h-5" />
                         </button>
                       )}
-                      {rider.approvalStatus === 'SUSPENDED' && (
+                      {rider.status === 'SUSPENDED' && (
                         <button
                           onClick={() => handleAction('activate', rider.id)}
                           className="text-blue-600 hover:text-blue-900"

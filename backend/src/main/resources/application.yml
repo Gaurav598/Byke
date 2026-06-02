@@ -64,6 +64,9 @@ google:
 
 firebase:
   credentials-path: ${FIREBASE_CREDENTIALS_PATH:}
+  api-key: ${FIREBASE_API_KEY:}
+  session-ttl-seconds: ${FIREBASE_SESSION_TTL_SECONDS:300}
+
 
 app:
   bidding:
