@@ -1,13 +1,13 @@
-import React, { useEffect } from 'react';
-import { Provider, useDispatch, useSelector } from 'react-redux';
-import { store, AppDispatch, RootState } from './src/store';
+import React, {useEffect} from 'react';
+import {Provider, useDispatch, useSelector} from 'react-redux';
+import {store, AppDispatch, RootState} from './src/store';
 import AppNavigator from './src/navigation/AppNavigator';
-import { checkStoredSession } from './src/store/slices/authSlice';
-import { View, ActivityIndicator, StatusBar } from 'react-native';
+import {checkStoredSession} from './src/store/slices/authSlice';
+import {View, ActivityIndicator, StatusBar} from 'react-native';
 
 const AppContent = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { loading } = useSelector((state: RootState) => state.auth);
+  const {loading} = useSelector((state: RootState) => state.auth);
 
   useEffect(() => {
     dispatch(checkStoredSession());
@@ -15,7 +15,13 @@ const AppContent = () => {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: '#fff',
+        }}>
         <StatusBar barStyle="dark-content" backgroundColor="#fff" />
         <ActivityIndicator size="large" color="#EAB308" />
       </View>

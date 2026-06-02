@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import {
   View,
   Text,
@@ -8,14 +8,11 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
-import { useDispatch } from 'react-redux';
-import { createBooking } from '../store/slices/bookingSlice';
 import api from '../config/api';
 
-const BookingScreen = ({ route, navigation }: any) => {
-  const { serviceType } = route.params;
-  const dispatch = useDispatch();
-  
+const BookingScreen = ({route, navigation}: any) => {
+  const {serviceType} = route.params;
+
   const [pickupAddress, setPickupAddress] = useState('');
   const [dropAddress, setDropAddress] = useState('');
   const [description, setDescription] = useState('');
@@ -63,22 +60,25 @@ const BookingScreen = ({ route, navigation }: any) => {
         vehicleType: 'BIKE',
         pickupAddress,
         pickupLatitude: 28.6139,
-        pickupLongitude: 77.2090,
+        pickupLongitude: 77.209,
         dropAddress,
         dropLatitude: 28.6239,
-        dropLongitude: 77.2190,
+        dropLongitude: 77.219,
         description: description || undefined,
-        estimatedBudget: estimatedBudget ? parseFloat(estimatedBudget) : undefined,
+        estimatedBudget: estimatedBudget
+          ? parseFloat(estimatedBudget)
+          : undefined,
       };
 
       const response = await api.post('/bookings', bookingData);
       const booking = response.data;
 
-      dispatch(createBooking(booking));
-      
-      navigation.navigate('BidSelection', { bookingId: booking.id });
+      navigation.navigate('BidSelection', {bookingId: booking.id});
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'Failed to create booking');
+      Alert.alert(
+        'Error',
+        error.response?.data?.message || 'Failed to create booking',
+      );
     } finally {
       setLoading(false);
     }
@@ -87,7 +87,7 @@ const BookingScreen = ({ route, navigation }: any) => {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Text style={[styles.icon, { color: config.color }]}>{config.icon}</Text>
+        <Text style={[styles.icon, {color: config.color}]}>{config.icon}</Text>
         <Text style={styles.title}>{config.title}</Text>
       </View>
 
@@ -160,10 +160,9 @@ const BookingScreen = ({ route, navigation }: any) => {
         </View>
 
         <TouchableOpacity
-          style={[styles.submitButton, { backgroundColor: config.color }]}
+          style={[styles.submitButton, {backgroundColor: config.color}]}
           onPress={handleSubmit}
-          disabled={loading}
-        >
+          disabled={loading}>
           <Text style={styles.submitButtonText}>
             {loading ? 'Creating...' : 'Find Riders'}
           </Text>

@@ -1,4 +1,4 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import {createSlice, PayloadAction} from '@reduxjs/toolkit';
 
 export interface RiderUser {
   id: number;
@@ -80,18 +80,25 @@ const bookingSlice = createSlice({
       state.biddingTimeLeft = 60; // 60 seconds bidding window
     },
     addBid: (state, action: PayloadAction<Bid>) => {
-      const existingBidIndex = state.bids.findIndex(bid => bid.rider?.id === action.payload.rider?.id);
+      const existingBidIndex = state.bids.findIndex(
+        bid => bid.rider?.id === action.payload.rider?.id,
+      );
       if (existingBidIndex >= 0) {
         state.bids[existingBidIndex] = action.payload;
       } else {
         state.bids.push(action.payload);
       }
     },
-    acceptBid: (state, action: PayloadAction<{ bidId: number; rider: Rider }>) => {
+    acceptBid: (
+      state,
+      action: PayloadAction<{bidId: number; rider: Rider}>,
+    ) => {
       if (state.currentBooking) {
         state.currentBooking.status = 'ACCEPTED';
         state.currentBooking.rider = action.payload.rider;
-        const acceptedBid = state.bids.find(bid => bid.id === action.payload.bidId);
+        const acceptedBid = state.bids.find(
+          bid => bid.id === action.payload.bidId,
+        );
         if (acceptedBid) {
           state.currentBooking.finalFare = acceptedBid.bidAmount;
         }
@@ -102,7 +109,7 @@ const bookingSlice = createSlice({
         state.currentBooking.status = action.payload;
       }
     },
-    completeBooking: (state, action: PayloadAction<{ rating?: number }>) => {
+    completeBooking: (state, _action: PayloadAction<{rating?: number}>) => {
       if (state.currentBooking) {
         state.currentBooking.status = 'completed';
         state.currentBooking.completedAt = new Date().toISOString();
@@ -111,7 +118,7 @@ const bookingSlice = createSlice({
         state.bids = [];
       }
     },
-    cancelBooking: (state) => {
+    cancelBooking: state => {
       if (state.currentBooking) {
         state.currentBooking.status = 'cancelled';
         state.bookingHistory.unshift(state.currentBooking);

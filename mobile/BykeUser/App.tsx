@@ -1,16 +1,16 @@
 import React from 'react';
-import { ImageBackground, StyleSheet, View } from 'react-native';
-import { Provider, useDispatch, useSelector } from 'react-redux';
-import { store, RootState, AppDispatch } from './src/store';
+import {ImageBackground, StyleSheet, View} from 'react-native';
+import {Provider, useDispatch, useSelector} from 'react-redux';
+import {store, RootState, AppDispatch} from './src/store';
 import AppNavigator from './src/navigation/AppNavigator';
-import { bootstrapAuth } from './src/store/thunks/authThunks';
+import {bootstrapAuth} from './src/store/thunks/authThunks';
 import './global.css';
 
 const SPLASH_DURATION_MS = 1000;
 
 const RootGate = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { isInitialized } = useSelector((state: RootState) => state.auth);
+  const {isInitialized} = useSelector((state: RootState) => state.auth);
   const [showSplash, setShowSplash] = React.useState(true);
 
   React.useEffect(() => {

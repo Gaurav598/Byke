@@ -1,4 +1,4 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import {createSlice, PayloadAction} from '@reduxjs/toolkit';
 
 interface User {
   id: string;
@@ -10,8 +10,8 @@ interface User {
 
 interface AuthState {
   isAuthenticated: boolean;
-  needsRegistration: boolean;   // true when backend says isNewUser = true
-  pendingToken: string | null;  // holds the JWT while user fills in their name
+  needsRegistration: boolean; // true when backend says isNewUser = true
+  pendingToken: string | null; // holds the JWT while user fills in their name
   pendingRefreshToken: string | null;
   pendingUserId: string | null;
   pendingPhone: string | null;
@@ -43,7 +43,10 @@ const authSlice = createSlice({
     setLoading: (state, action: PayloadAction<boolean>) => {
       state.isLoading = action.payload;
     },
-    loginSuccess: (state, action: PayloadAction<{ user: User; token: string; refreshToken?: string }>) => {
+    loginSuccess: (
+      state,
+      action: PayloadAction<{user: User; token: string; refreshToken?: string}>,
+    ) => {
       state.isAuthenticated = true;
       state.needsRegistration = false;
       state.pendingToken = null;
@@ -56,12 +59,15 @@ const authSlice = createSlice({
       state.isLoading = false;
     },
     // Called when backend returns isNewUser = true
-    registrationRequired: (state, action: PayloadAction<{
-      token: string;
-      refreshToken?: string;
-      userId: string;
-      phone: string;
-    }>) => {
+    registrationRequired: (
+      state,
+      action: PayloadAction<{
+        token: string;
+        refreshToken?: string;
+        userId: string;
+        phone: string;
+      }>,
+    ) => {
       state.needsRegistration = true;
       state.isAuthenticated = false;
       state.pendingToken = action.payload.token;
@@ -70,7 +76,7 @@ const authSlice = createSlice({
       state.pendingPhone = action.payload.phone;
       state.isLoading = false;
     },
-    logout: (state) => {
+    logout: state => {
       state.isAuthenticated = false;
       state.needsRegistration = false;
       state.pendingToken = null;
@@ -87,12 +93,18 @@ const authSlice = createSlice({
     },
     updateProfile: (state, action: PayloadAction<Partial<User>>) => {
       if (state.user) {
-        state.user = { ...state.user, ...action.payload };
+        state.user = {...state.user, ...action.payload};
       }
     },
   },
 });
 
-export const { setLoading, loginSuccess, logout, updateProfile, setInitialized, registrationRequired } = authSlice.actions;
+export const {
+  setLoading,
+  loginSuccess,
+  logout,
+  updateProfile,
+  setInitialized,
+  registrationRequired,
+} = authSlice.actions;
 export default authSlice.reducer;
-

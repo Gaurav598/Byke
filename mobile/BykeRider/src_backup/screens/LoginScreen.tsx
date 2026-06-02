@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import {
   View,
   Text,
@@ -7,11 +7,11 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { useDispatch, useSelector } from 'react-redux';
-import { sendOtp, verifyOtp } from '../store/slices/authSlice';
-import { AppDispatch, RootState } from '../store';
+import {useDispatch, useSelector} from 'react-redux';
+import {sendOtp, verifyOtp} from '../store/slices/authSlice';
+import {AppDispatch, RootState} from '../store';
 
-const LoginScreen = ({ navigation }: any) => {
+const LoginScreen = ({navigation}: any) => {
   const [mobileNumber, setMobileNumber] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [fullName, setFullName] = useState('');
@@ -19,7 +19,7 @@ const LoginScreen = ({ navigation }: any) => {
   const [timer, setTimer] = useState(60);
 
   const dispatch = useDispatch<AppDispatch>();
-  const { loading, error } = useSelector((state: RootState) => state.auth);
+  const {loading, error} = useSelector((state: RootState) => state.auth);
 
   const handleSendOtp = async () => {
     if (mobileNumber.length !== 10) {
@@ -44,7 +44,7 @@ const LoginScreen = ({ navigation }: any) => {
     }
 
     try {
-      await dispatch(verifyOtp({ mobileNumber, otpCode, fullName })).unwrap();
+      await dispatch(verifyOtp({mobileNumber, otpCode, fullName})).unwrap();
       navigation.replace('Home');
     } catch (err: any) {
       Alert.alert('Error', err);
@@ -53,7 +53,7 @@ const LoginScreen = ({ navigation }: any) => {
 
   const startTimer = () => {
     const interval = setInterval(() => {
-      setTimer((prev) => {
+      setTimer(prev => {
         if (prev <= 1) {
           clearInterval(interval);
           return 0;
@@ -65,8 +65,12 @@ const LoginScreen = ({ navigation }: any) => {
 
   return (
     <View className="flex-1 bg-white px-6 justify-center">
-      <Text className="text-3xl font-bold text-gray-900 mb-2">Welcome to BYKE</Text>
-      <Text className="text-gray-600 mb-8">Enter your mobile number to continue</Text>
+      <Text className="text-3xl font-bold text-gray-900 mb-2">
+        Welcome to BYKE
+      </Text>
+      <Text className="text-gray-600 mb-8">
+        Enter your mobile number to continue
+      </Text>
 
       {!otpSent ? (
         <>
@@ -81,12 +85,13 @@ const LoginScreen = ({ navigation }: any) => {
           <TouchableOpacity
             className="bg-blue-600 rounded-lg py-4 items-center"
             onPress={handleSendOtp}
-            disabled={loading}
-          >
+            disabled={loading}>
             {loading ? (
               <ActivityIndicator color="white" />
             ) : (
-              <Text className="text-white font-semibold text-base">Send OTP</Text>
+              <Text className="text-white font-semibold text-base">
+                Send OTP
+              </Text>
             )}
           </TouchableOpacity>
         </>
@@ -109,19 +114,24 @@ const LoginScreen = ({ navigation }: any) => {
           <TouchableOpacity
             className="bg-blue-600 rounded-lg py-4 items-center mb-4"
             onPress={handleVerifyOtp}
-            disabled={loading}
-          >
+            disabled={loading}>
             {loading ? (
               <ActivityIndicator color="white" />
             ) : (
-              <Text className="text-white font-semibold text-base">Verify OTP</Text>
+              <Text className="text-white font-semibold text-base">
+                Verify OTP
+              </Text>
             )}
           </TouchableOpacity>
           {timer > 0 ? (
-            <Text className="text-center text-gray-600">Resend OTP in {timer}s</Text>
+            <Text className="text-center text-gray-600">
+              Resend OTP in {timer}s
+            </Text>
           ) : (
             <TouchableOpacity onPress={handleSendOtp}>
-              <Text className="text-center text-blue-600 font-semibold">Resend OTP</Text>
+              <Text className="text-center text-blue-600 font-semibold">
+                Resend OTP
+              </Text>
             </TouchableOpacity>
           )}
         </>

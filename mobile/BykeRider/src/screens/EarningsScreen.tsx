@@ -1,27 +1,28 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  ScrollView, 
-  SafeAreaView, 
-  ActivityIndicator, 
+import React, {useState, useEffect} from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  SafeAreaView,
   RefreshControl,
   StyleSheet,
-  Dimensions,
-  Platform
+  Platform,
 } from 'react-native';
 import api from '../config/api';
-import { 
-  ArrowLeft, Wallet, TrendingUp, 
-  Calendar, ChevronRight, CheckCircle2, 
-  IndianRupee, ArrowUpRight, ArrowDownLeft,
-  CreditCard, PieChart
+import {
+  ArrowLeft,
+  Wallet,
+  TrendingUp,
+  Calendar,
+  IndianRupee,
+  ArrowUpRight,
+  ArrowDownLeft,
+  CreditCard,
+  PieChart,
 } from 'lucide-react-native';
 
-const { width } = Dimensions.get('window');
-
-const EarningsScreen = ({ navigation }: any) => {
+const EarningsScreen = ({navigation}: any) => {
   const [loading, setLoading] = useState(false);
   const [earnings, setEarnings] = useState({
     today: 0,
@@ -41,9 +42,9 @@ const EarningsScreen = ({ navigation }: any) => {
         week: response.data.earningsWeek || 0,
         month: response.data.earningsMonth || 0,
         trips: response.data.totalRides || 0,
-        rating: response.data.averageRating || 0
+        rating: response.data.averageRating || 0,
       });
-      
+
       // Fetch transaction history
       const transactionsResponse = await api.get('/rider/transactions');
       setTransactions(transactionsResponse.data || []);
@@ -62,10 +63,9 @@ const EarningsScreen = ({ navigation }: any) => {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => navigation.goBack()}
-          style={styles.backBtn}
-        >
+          style={styles.backBtn}>
           <ArrowLeft size={24} color="black" strokeWidth={2.5} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Financials</Text>
@@ -74,13 +74,16 @@ const EarningsScreen = ({ navigation }: any) => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={fetchEarnings} tintColor="#000" />
-        }
-      >
+          <RefreshControl
+            refreshing={loading}
+            onRefresh={fetchEarnings}
+            tintColor="#000"
+          />
+        }>
         {/* Balance Card */}
         <View style={styles.balanceCard}>
           <View style={styles.balanceHeader}>
@@ -89,9 +92,9 @@ const EarningsScreen = ({ navigation }: any) => {
             </View>
             <Text style={styles.balanceLabel}>Available Balance</Text>
           </View>
-          
+
           <Text style={styles.balanceAmount}>₹{earnings.today}</Text>
-          
+
           <View style={styles.balanceFooter}>
             <View style={styles.statItem}>
               <Text style={styles.statLabel}>Total Trips</Text>
@@ -107,7 +110,11 @@ const EarningsScreen = ({ navigation }: any) => {
         {/* Quick Stats */}
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
-            <View style={[styles.statIconContainer, { backgroundColor: '#3B82F615' }]}>
+            <View
+              style={[
+                styles.statIconContainer,
+                {backgroundColor: '#3B82F615'},
+              ]}>
               <Calendar size={18} color="#3B82F6" />
             </View>
             <Text style={styles.statCardLabel}>Weekly</Text>
@@ -119,7 +126,11 @@ const EarningsScreen = ({ navigation }: any) => {
           </View>
 
           <View style={styles.statCard}>
-            <View style={[styles.statIconContainer, { backgroundColor: '#10B98115' }]}>
+            <View
+              style={[
+                styles.statIconContainer,
+                {backgroundColor: '#10B98115'},
+              ]}>
               <PieChart size={18} color="#10B981" />
             </View>
             <Text style={styles.statCardLabel}>Monthly</Text>
@@ -142,7 +153,14 @@ const EarningsScreen = ({ navigation }: any) => {
         {transactions.length > 0 ? (
           transactions.map((item: any) => (
             <View key={item.id} style={styles.transactionItem}>
-              <View style={[styles.itemIcon, { backgroundColor: item.type === 'credit' ? '#D1FAE5' : '#F3F4F6' }]}>
+              <View
+                style={[
+                  styles.itemIcon,
+                  {
+                    backgroundColor:
+                      item.type === 'credit' ? '#D1FAE5' : '#F3F4F6',
+                  },
+                ]}>
                 {item.type === 'credit' ? (
                   <ArrowDownLeft size={20} color="#10B981" strokeWidth={2.5} />
                 ) : (
@@ -150,14 +168,27 @@ const EarningsScreen = ({ navigation }: any) => {
                 )}
               </View>
               <View style={styles.itemInfo}>
-                <Text style={styles.itemTitle}>{item.title || item.description}</Text>
-                <Text style={styles.itemSubtitle}>{item.subtitle || `Booking #${item.bookingId}`}</Text>
+                <Text style={styles.itemTitle}>
+                  {item.title || item.description}
+                </Text>
+                <Text style={styles.itemSubtitle}>
+                  {item.subtitle || `Booking #${item.bookingId}`}
+                </Text>
               </View>
               <View style={styles.itemRight}>
-                <Text style={[styles.itemAmount, { color: item.type === 'credit' ? '#10B981' : '#000' }]}>
+                <Text
+                  style={[
+                    styles.itemAmount,
+                    {color: item.type === 'credit' ? '#10B981' : '#000'},
+                  ]}>
                   {item.type === 'credit' ? '+' : '-'} ₹{Math.abs(item.amount)}
                 </Text>
-                <Text style={styles.itemTime}>{new Date(item.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</Text>
+                <Text style={styles.itemTime}>
+                  {new Date(item.createdAt).toLocaleTimeString('en-IN', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </Text>
               </View>
             </View>
           ))
@@ -166,8 +197,8 @@ const EarningsScreen = ({ navigation }: any) => {
             <Text style={styles.emptyText}>No transactions yet</Text>
           </View>
         )}
-        
-        <View style={{ height: Platform.OS === 'ios' ? 100 : 90 }} />
+
+        <View style={{height: Platform.OS === 'ios' ? 100 : 90}} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -218,7 +249,7 @@ const styles = StyleSheet.create({
     padding: 30,
     marginBottom: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
+    shadowOffset: {width: 0, height: 10},
     shadowOpacity: 0.2,
     shadowRadius: 20,
     elevation: 8,

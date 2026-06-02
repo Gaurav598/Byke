@@ -1,9 +1,15 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import {createSlice, PayloadAction} from '@reduxjs/toolkit';
 
 export interface Booking {
   id: string;
   type: 'ride' | 'errand' | 'parcel';
-  status: 'pending' | 'bidding' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
+  status:
+    | 'pending'
+    | 'bidding'
+    | 'accepted'
+    | 'in_progress'
+    | 'completed'
+    | 'cancelled';
   pickupLocation: {
     address: string;
     latitude: number;
@@ -71,29 +77,38 @@ const riderSlice = createSlice({
     setLoading: (state, action: PayloadAction<boolean>) => {
       state.isLoading = action.payload;
     },
-    toggleOnlineStatus: (state) => {
+    toggleOnlineStatus: state => {
       state.isOnline = !state.isOnline;
     },
     setOnlineStatus: (state, action: PayloadAction<boolean>) => {
       state.isOnline = action.payload;
     },
-    updateLocation: (state, action: PayloadAction<{ latitude: number; longitude: number }>) => {
+    updateLocation: (
+      state,
+      action: PayloadAction<{latitude: number; longitude: number}>,
+    ) => {
       state.currentLocation = action.payload;
     },
     setAvailableBookings: (state, action: PayloadAction<Booking[]>) => {
       state.availableBookings = action.payload;
     },
     addAvailableBooking: (state, action: PayloadAction<Booking>) => {
-      const exists = state.availableBookings.find(b => b.id === action.payload.id);
+      const exists = state.availableBookings.find(
+        b => b.id === action.payload.id,
+      );
       if (!exists) {
         state.availableBookings.unshift(action.payload);
       }
     },
     removeAvailableBooking: (state, action: PayloadAction<string>) => {
-      state.availableBookings = state.availableBookings.filter(b => b.id !== action.payload);
+      state.availableBookings = state.availableBookings.filter(
+        b => b.id !== action.payload,
+      );
     },
     addBid: (state, action: PayloadAction<Bid>) => {
-      const existingIndex = state.myBids.findIndex(b => b.bookingId === action.payload.bookingId);
+      const existingIndex = state.myBids.findIndex(
+        b => b.bookingId === action.payload.bookingId,
+      );
       if (existingIndex >= 0) {
         state.myBids[existingIndex] = action.payload;
       } else {
@@ -103,12 +118,25 @@ const riderSlice = createSlice({
     setActiveBooking: (state, action: PayloadAction<Booking | null>) => {
       state.activeBooking = action.payload;
     },
-    updateBookingStatus: (state, action: PayloadAction<{ bookingId: string; status: Booking['status'] }>) => {
-      if (state.activeBooking && state.activeBooking.id === action.payload.bookingId) {
+    updateBookingStatus: (
+      state,
+      action: PayloadAction<{bookingId: string; status: Booking['status']}>,
+    ) => {
+      if (
+        state.activeBooking &&
+        state.activeBooking.id === action.payload.bookingId
+      ) {
         state.activeBooking.status = action.payload.status;
       }
     },
-    setEarnings: (state, action: PayloadAction<{ today: number; thisWeek: number; thisMonth: number }>) => {
+    setEarnings: (
+      state,
+      action: PayloadAction<{
+        today: number;
+        thisWeek: number;
+        thisMonth: number;
+      }>,
+    ) => {
       state.earnings = action.payload;
     },
   },

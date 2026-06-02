@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, {useState, useEffect, useRef, useCallback} from 'react';
 import {
   View,
   Text,
@@ -6,160 +6,197 @@ import {
   Switch,
   Alert,
   StyleSheet,
-  Dimensions,
-  Platform,
-  PermissionsAndroid,
+  useWindowDimensions,
+  ScrollView,
+  ActivityIndicator,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState, AppDispatch } from '../store';
-import { toggleOnlineStatus, setEarnings, updateLocation } from '../store/slices/riderSlice';
+import MapView, {Marker, PROVIDER_GOOGLE} from 'react-native-maps';
+import {useSelector, useDispatch} from 'react-redux';
+import {RootState, AppDispatch} from '../store';
+import {
+  toggleOnlineStatus,
+  setEarnings,
+  updateLocation,
+} from '../store/slices/riderSlice';
 import api from '../config/api';
-import Geolocation from 'react-native-geolocation-service';
-import { Bell, Wallet, TrendingUp, Navigation, Clock, Shield, List } from 'lucide-react-native';
+import {
+  clearLocationWatch,
+  getCurrentLocation as fetchCurrentLocation,
+  requestLocationPermission,
+  watchLocation,
+} from '../services/locationService';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {
+  Bell,
+  Wallet,
+  TrendingUp,
+  Navigation,
+  Clock,
+  Shield,
+  List,
+} from 'lucide-react-native';
 
-const { width, height } = Dimensions.get('window');
-const MAP_HEIGHT = height * 0.65;
-
-const HomeScreen = ({ navigation }: any) => {
+const HomeScreen = ({navigation}: any) => {
+  const {height} = useWindowDimensions();
+  const mapHeight = height * 0.58;
+  const insets = useSafeAreaInsets();
   const dispatch = useDispatch<AppDispatch>();
-  const { user: rider } = useSelector((state: RootState) => state.auth);
-  const { isOnline, earnings } = useSelector((state: RootState) => state.rider) as any;
+  const {isOnline, earnings} = useSelector(
+    (state: RootState) => state.rider,
+  ) as any;
   const mapRef = useRef<MapView>(null);
-  
+  const watchIdRef = useRef<number | null>(null);
+
   const [location, setLocation] = useState({
     latitude: 28.6139,
-    longitude: 77.2090,
+    longitude: 77.209,
     latitudeDelta: 0.0122,
     longitudeDelta: 0.0121,
   });
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
+  const [locationLoading, setLocationLoading] = useState(false);
 
-  useEffect(() => {
-    requestLocationPermission();
-    fetchRealEarnings();
-    checkActiveRide();
-    
-    // Poll for active rides every 5 seconds to detect accepted bids immediately
-    const rideCheckInterval = setInterval(checkActiveRide, 5000);
-    return () => clearInterval(rideCheckInterval);
+  const getCurrentLocation = useCallback(async () => {
+    try {
+      setLocationLoading(true);
+      const position = await fetchCurrentLocation();
+      const newLocation = {
+        latitude: position.latitude,
+        longitude: position.longitude,
+        latitudeDelta: 0.0122,
+        longitudeDelta: 0.0121,
+      };
+      setLocation(newLocation);
+      mapRef.current?.animateToRegion(newLocation, 800);
+    } catch (error) {
+      console.log('Location error:', error);
+    } finally {
+      setLocationLoading(false);
+    }
   }, []);
 
-  useEffect(() => {
-    if (isOnline && hasLocationPermission) {
-      startLocationTracking();
-      // Poll location every 6 seconds for real-time tracking
-      const interval = setInterval(startLocationTracking, 6000);
-      return () => clearInterval(interval);
-    }
-  }, [isOnline, hasLocationPermission]);
-
-  const requestLocationPermission = async () => {
-    if (Platform.OS === 'android') {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-        {
-          title: 'Location Permission',
-          message: 'BYKE Rider needs access to your location',
-          buttonNeutral: 'Ask Me Later',
-          buttonNegative: 'Cancel',
-          buttonPositive: 'OK',
-        }
+  const requestAndLoadLocation = useCallback(async () => {
+    const granted = await requestLocationPermission();
+    setHasLocationPermission(granted);
+    if (!granted) {
+      Alert.alert(
+        'Location Required',
+        'Please enable location permission to receive nearby bookings.',
       );
-      setHasLocationPermission(granted === PermissionsAndroid.RESULTS.GRANTED);
-      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-        getCurrentLocation();
-      }
-    } else {
-      setHasLocationPermission(true);
-      getCurrentLocation();
+      return;
     }
-  };
 
-  const getCurrentLocation = () => {
-    Geolocation.getCurrentPosition(
-      (position) => {
-        const newLocation = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          latitudeDelta: 0.0122,
-          longitudeDelta: 0.0121,
-        };
-        setLocation(newLocation);
-        mapRef.current?.animateToRegion(newLocation, 800);
-      },
-      (error) => console.log('Location error:', error),
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
-    );
-  };
+    await getCurrentLocation();
 
-  const fetchRealEarnings = async () => {
+    if (watchIdRef.current === null) {
+      watchIdRef.current = watchLocation(loc => {
+        setLocation(prev => ({
+          ...prev,
+          latitude: loc.latitude,
+          longitude: loc.longitude,
+        }));
+      });
+    }
+  }, [getCurrentLocation]);
+
+  const fetchRealEarnings = useCallback(async () => {
     try {
       const response = await api.get('/rider/stats');
-      dispatch(setEarnings({
-        today: response.data.earningsToday || 0,
-        thisWeek: response.data.earningsWeek || 0,
-        thisMonth: response.data.earningsMonth || 0,
-      }));
+      dispatch(
+        setEarnings({
+          today: response.data.earningsToday || 0,
+          thisWeek: response.data.earningsWeek || 0,
+          thisMonth: response.data.earningsMonth || 0,
+        }),
+      );
     } catch (error) {
       console.log('Error fetching earnings:', error);
     }
-  };
+  }, [dispatch]);
 
-  const checkActiveRide = async () => {
+  const checkActiveRide = useCallback(async () => {
     try {
       const response = await api.get('/bookings/rider/active');
       if (response.status === 200 && response.data) {
         const booking = response.data;
-        navigation.replace('RideTracking', { booking });
+        navigation.replace('RideTracking', {booking});
       }
-    } catch (error) {
-      // No active ride
+    } catch {
+      // no active ride
     }
-  };
+  }, [navigation]);
 
-  const startLocationTracking = () => {
-    Geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        dispatch(updateLocation({ latitude, longitude }));
-        setLocation(prev => ({ ...prev, latitude, longitude }));
-        
-        api.patch('/rider/location', null, {
-          params: { latitude, longitude }
-        }).catch(console.log);
-      },
-      (error) => console.log('Location error:', error),
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
-    );
-  };
+  const startLocationTracking = useCallback(async () => {
+    try {
+      const position = await fetchCurrentLocation();
+      const {latitude, longitude} = position;
+      dispatch(updateLocation({latitude, longitude}));
+      setLocation(prev => ({...prev, latitude, longitude}));
+      api
+        .patch('/rider/location', null, {
+          params: {latitude, longitude},
+        })
+        .catch(console.log);
+    } catch (error) {
+      console.log('Location tracking error:', error);
+    }
+  }, [dispatch]);
+
+  useEffect(() => {
+    requestAndLoadLocation();
+    fetchRealEarnings();
+    checkActiveRide();
+
+    const rideCheckInterval = setInterval(checkActiveRide, 5000);
+    return () => {
+      clearInterval(rideCheckInterval);
+      if (watchIdRef.current !== null) {
+        clearLocationWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+    };
+  }, [checkActiveRide, fetchRealEarnings, requestAndLoadLocation]);
+
+  useEffect(() => {
+    if (isOnline && hasLocationPermission) {
+      void startLocationTracking();
+      const interval = setInterval(() => {
+        void startLocationTracking();
+      }, 6000);
+      return () => clearInterval(interval);
+    }
+  }, [hasLocationPermission, isOnline, startLocationTracking]);
 
   const handleToggleOnline = async () => {
     try {
       const newStatus = !isOnline;
-      
-      // Update status on backend
+
       await api.patch('/rider/status', null, {
-        params: { status: newStatus ? 'AVAILABLE' : 'OFFLINE' }
+        params: {status: newStatus ? 'AVAILABLE' : 'OFFLINE'},
       });
-      
+
       dispatch(toggleOnlineStatus());
-      
+
       if (newStatus) {
-        startLocationTracking();
-        Alert.alert('You are now online', 'You will receive booking notifications');
+        await startLocationTracking();
+        Alert.alert(
+          'You are now online',
+          'You will receive booking notifications',
+        );
       } else {
         Alert.alert('You are now offline', 'You will not receive new bookings');
       }
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'Failed to update status');
+      Alert.alert(
+        'Error',
+        error.response?.data?.message || 'Failed to update status',
+      );
     }
   };
 
   return (
     <View style={styles.container}>
-      {/* Map View */}
-      <View style={styles.mapContainer}>
+      <View style={[styles.mapContainer, {height: mapHeight}]}> 
         <MapView
           ref={mapRef}
           provider={PROVIDER_GOOGLE}
@@ -167,8 +204,7 @@ const HomeScreen = ({ navigation }: any) => {
           region={location}
           showsUserLocation
           showsMyLocationButton={false}
-          showsCompass={false}
-        >
+          showsCompass={false}>
           <Marker coordinate={location}>
             <View style={styles.riderMarker}>
               <Navigation size={20} color="white" fill="white" />
@@ -176,38 +212,52 @@ const HomeScreen = ({ navigation }: any) => {
           </Marker>
         </MapView>
 
-        {/* Header Overlay */}
-        <View style={styles.headerOverlay}>
+        <View style={[styles.headerOverlay, {top: insets.top + 8}]}> 
           <View style={styles.headerLeft}>
-            <View style={[styles.statusBadge, { backgroundColor: isOnline ? '#10B981' : '#6B7280' }]}>
+            <View
+              style={[
+                styles.statusBadge,
+                {backgroundColor: isOnline ? '#10B981' : '#6B7280'},
+              ]}>
               <View style={styles.statusDot} />
-              <Text style={styles.statusText}>{isOnline ? 'ONLINE' : 'OFFLINE'}</Text>
+              <Text style={styles.statusText}>
+                {isOnline ? 'ONLINE' : 'OFFLINE'}
+              </Text>
             </View>
           </View>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.notificationBtn}
-            onPress={() => navigation.navigate('Notifications')}
-          >
+            onPress={() => navigation.navigate('Notifications')}>
             <Bell size={22} color="black" />
             <View style={styles.notificationDot} />
           </TouchableOpacity>
         </View>
 
-        {/* Recenter Button */}
-        <TouchableOpacity 
-          style={styles.recenterBtn}
-          onPress={getCurrentLocation}
-        >
-          <Navigation size={20} color="black" />
+        <TouchableOpacity style={styles.recenterBtn} onPress={getCurrentLocation}>
+          {locationLoading ? (
+            <ActivityIndicator size="small" color="#000" />
+          ) : (
+            <Navigation size={20} color="black" />
+          )}
         </TouchableOpacity>
       </View>
 
-      {/* Bottom Sheet */}
-      <View style={styles.bottomSheet}>
-        {/* Online Toggle */}
-        <View style={[styles.onlineCard, { backgroundColor: isOnline ? '#10B98115' : '#F3F4F6' }]}>
+      <ScrollView
+        style={styles.bottomSheet}
+        contentContainerStyle={[
+          styles.bottomSheetContent,
+          {paddingBottom: Math.max(insets.bottom + 84, 92)},
+        ]}
+        showsVerticalScrollIndicator={false}>
+        <View
+          style={[
+            styles.onlineCard,
+            {backgroundColor: isOnline ? '#10B98115' : '#F3F4F6'},
+          ]}>
           <View style={styles.onlineCardLeft}>
-            <Text style={styles.onlineLabel}>Go {isOnline ? 'Offline' : 'Online'}</Text>
+            <Text style={styles.onlineLabel}>
+              Go {isOnline ? 'Offline' : 'Online'}
+            </Text>
             <Text style={styles.onlineSubtext}>
               {isOnline ? 'Stop receiving orders' : 'Start accepting orders'}
             </Text>
@@ -215,12 +265,11 @@ const HomeScreen = ({ navigation }: any) => {
           <Switch
             value={isOnline}
             onValueChange={handleToggleOnline}
-            trackColor={{ false: '#D1D5DB', true: '#10B981' }}
+            trackColor={{false: '#D1D5DB', true: '#10B981'}}
             thumbColor="#fff"
           />
         </View>
 
-        {/* Earnings Summary */}
         <View style={styles.earningsCard}>
           <View style={styles.earningsHeader}>
             <View style={styles.earningsIcon}>
@@ -243,33 +292,29 @@ const HomeScreen = ({ navigation }: any) => {
           </View>
         </View>
 
-        {/* Quick Actions */}
         <View style={styles.actionsRow}>
-          <TouchableOpacity 
-            style={[styles.actionBtn, { backgroundColor: '#EAB30815' }]}
-            onPress={() => navigation.navigate('AvailableBookings')}
-          >
+          <TouchableOpacity
+            style={[styles.actionBtn, {backgroundColor: '#EAB30815'}]}
+            onPress={() => navigation.navigate('AvailableBookings')}>
             <List size={22} color="#EAB308" strokeWidth={2.5} />
             <Text style={styles.actionText}>Orders</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.actionBtn, { backgroundColor: '#3B82F615' }]}
-            onPress={() => navigation.navigate('MyBids')}
-          >
+
+          <TouchableOpacity
+            style={[styles.actionBtn, {backgroundColor: '#3B82F615'}]}
+            onPress={() => navigation.navigate('MyBids')}>
             <Clock size={22} color="#3B82F6" strokeWidth={2.5} />
             <Text style={styles.actionText}>My Bids</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.actionBtn, { backgroundColor: '#10B98115' }]}
-            onPress={() => navigation.navigate('Documents')}
-          >
+
+          <TouchableOpacity
+            style={[styles.actionBtn, {backgroundColor: '#10B98115'}]}
+            onPress={() => navigation.navigate('Documents')}>
             <Shield size={22} color="#10B981" strokeWidth={2.5} />
             <Text style={styles.actionText}>Docs</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </ScrollView>
     </View>
   );
 };
@@ -280,7 +325,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   mapContainer: {
-    height: MAP_HEIGHT,
     width: '100%',
   },
   riderMarker: {
@@ -293,14 +337,13 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#fff',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
   },
   headerOverlay: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 50 : 20,
     left: 20,
     right: 20,
     flexDirection: 'row',
@@ -339,7 +382,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
@@ -366,7 +409,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
@@ -378,12 +421,14 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 32,
     paddingHorizontal: 20,
     paddingTop: 24,
-    paddingBottom: Platform.OS === 'ios' ? 90 : 80,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
+    shadowOffset: {width: 0, height: -4},
     shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 8,
+  },
+  bottomSheetContent: {
+    paddingBottom: 92,
   },
   onlineCard: {
     flexDirection: 'row',

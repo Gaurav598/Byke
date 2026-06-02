@@ -1,20 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  FlatList, 
-  TouchableOpacity, 
-  RefreshControl, 
-  SafeAreaView, 
+import React, {useState, useEffect} from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  RefreshControl,
+  SafeAreaView,
   StyleSheet,
-  Dimensions,
-  Platform
 } from 'react-native';
 import api from '../config/api';
-import { 
-  Bell, ArrowLeft, CheckCircle2, 
-  Clock, Info, Inbox, ChevronRight,
-  Trash2, MailOpen, Mail
+import {
+  Bell,
+  ArrowLeft,
+  CheckCircle2,
+  Info,
+  Inbox,
+  MailOpen,
 } from 'lucide-react-native';
 
 interface Notification {
@@ -26,14 +27,14 @@ interface Notification {
   createdAt: string;
 }
 
-const NotificationsScreen = ({ navigation }: any) => {
+const NotificationsScreen = ({navigation}: any) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
 
   const fetchNotifications = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/rider/notifications');
+      const response = await api.get('/notifications');
       setNotifications(response.data);
     } catch (error) {
       console.log('Error fetching notifications:', error);
@@ -48,9 +49,9 @@ const NotificationsScreen = ({ navigation }: any) => {
 
   const markAsRead = async (id: number) => {
     try {
-      await api.put(`/rider/notifications/${id}/read`);
+      await api.put(`/notifications/${id}/read`);
       setNotifications(prev =>
-        prev.map(n => (n.id === id ? { ...n, read: true } : n))
+        prev.map(n => (n.id === id ? {...n, read: true} : n)),
       );
     } catch (error) {
       console.log('Error marking notification as read:', error);
@@ -59,8 +60,8 @@ const NotificationsScreen = ({ navigation }: any) => {
 
   const markAllRead = async () => {
     try {
-      // Assuming endpoint exists or we can map it
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      await api.put('/notifications/read-all');
+      setNotifications(prev => prev.map(n => ({...n, read: true})));
     } catch (error) {
       console.log('Error marking all as read:', error);
     }
@@ -68,28 +69,28 @@ const NotificationsScreen = ({ navigation }: any) => {
 
   const getIcon = (type: string) => {
     switch (type) {
-      case 'NEW_BOOKING': return { icon: Bell, color: '#EAB308' };
-      case 'PAYMENT_RECEIVED': return { icon: CheckCircle2, color: '#10B981' };
-      case 'SYSTEM_ALERT': return { icon: Info, color: '#EF4444' };
-      default: return { icon: Inbox, color: '#3B82F6' };
+      case 'NEW_BOOKING':
+        return {icon: Bell, color: '#EAB308'};
+      case 'PAYMENT_RECEIVED':
+        return {icon: CheckCircle2, color: '#10B981'};
+      case 'SYSTEM_ALERT':
+        return {icon: Info, color: '#EF4444'};
+      default:
+        return {icon: Inbox, color: '#3B82F6'};
     }
   };
 
-  const renderNotification = ({ item }: { item: Notification }) => {
-    const { icon: Icon, color } = getIcon(item.type);
+  const renderNotification = ({item}: {item: Notification}) => {
+    const {icon: Icon, color} = getIcon(item.type);
     return (
       <TouchableOpacity
         activeOpacity={0.7}
-        style={[
-          styles.notifCard,
-          !item.read && styles.unreadCard
-        ]}
-        onPress={() => markAsRead(item.id)}
-      >
-        <View style={[styles.iconContainer, { backgroundColor: `${color}15` }]}>
+        style={[styles.notifCard, !item.read && styles.unreadCard]}
+        onPress={() => markAsRead(item.id)}>
+        <View style={[styles.iconContainer, {backgroundColor: `${color}15`}]}>
           <Icon size={20} color={color} strokeWidth={2.5} />
         </View>
-        
+
         <View style={styles.notifContent}>
           <View style={styles.notifHeader}>
             <Text style={[styles.notifTitle, !item.read && styles.unreadTitle]}>
@@ -101,11 +102,11 @@ const NotificationsScreen = ({ navigation }: any) => {
             {item.message}
           </Text>
           <Text style={styles.notifTime}>
-            {new Date(item.createdAt).toLocaleDateString(undefined, { 
-              day: '2-digit', 
-              month: 'short', 
-              hour: '2-digit', 
-              minute: '2-digit' 
+            {new Date(item.createdAt).toLocaleDateString(undefined, {
+              day: '2-digit',
+              month: 'short',
+              hour: '2-digit',
+              minute: '2-digit',
             })}
           </Text>
         </View>
@@ -117,10 +118,9 @@ const NotificationsScreen = ({ navigation }: any) => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => navigation.goBack()}
-            style={styles.backBtn}
-          >
+            style={styles.backBtn}>
             <ArrowLeft size={24} color="black" strokeWidth={2.5} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Inbox</Text>
@@ -134,9 +134,13 @@ const NotificationsScreen = ({ navigation }: any) => {
       <FlatList
         data={notifications}
         renderItem={renderNotification}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={item => item.id.toString()}
         refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={fetchNotifications} tintColor="#000" />
+          <RefreshControl
+            refreshing={loading}
+            onRefresh={fetchNotifications}
+            tintColor="#000"
+          />
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
@@ -145,7 +149,8 @@ const NotificationsScreen = ({ navigation }: any) => {
             </View>
             <Text style={styles.emptyTitle}>Nothing here yet</Text>
             <Text style={styles.emptySubtitle}>
-              New orders and account updates will appear here. Keep your app online to stay updated!
+              New orders and account updates will appear here. Keep your app
+              online to stay updated!
             </Text>
           </View>
         }
@@ -191,7 +196,7 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     textTransform: 'uppercase',
     letterSpacing: 1,
-    marginLeft: 59, // Alignment with title
+    marginTop: 2,
   },
   actionBtn: {
     width: 44,

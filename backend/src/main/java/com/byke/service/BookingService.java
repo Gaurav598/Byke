@@ -147,11 +147,21 @@ public class BookingService {
         Booking savedBooking = bookingRepository.save(booking);
         log.info("Booking {} accepted by rider {}", bookingId, riderId);
 
-        notificationService.notifyUser(booking.getUser().getId(), "Rider Found", 
-                "Rider " + rider.getUser().getFullName() + " is on the way!");
+        notificationService.notifyUserWithType(
+                booking.getUser().getId(),
+                "Rider Found",
+                "Rider " + rider.getUser().getFullName() + " is on the way!",
+                "RIDER_APPROACHING",
+                booking.getId()
+        );
         
-        notificationService.notifyRider(riderId, "Booking Confirmed", 
-                "Navigate to pickup location");
+        notificationService.notifyRiderWithType(
+                riderId,
+                "Booking Confirmed",
+                "Navigate to pickup location",
+                "RIDE_ACCEPTED",
+                booking.getId()
+        );
 
         return savedBooking;
     }
@@ -163,18 +173,33 @@ public class BookingService {
 
         if (status == BookingStatus.RIDER_ARRIVED) {
             booking.setRiderArrivedAt(LocalDateTime.now());
-            notificationService.notifyUser(booking.getUser().getId(), "Rider Arrived", 
-                    "Your rider has arrived at the pickup location");
+            notificationService.notifyUserWithType(
+                    booking.getUser().getId(),
+                    "Rider Arrived",
+                    "Your rider has arrived at the pickup location",
+                    "RIDER_ARRIVED",
+                    booking.getId()
+            );
         } else if (status == BookingStatus.IN_PROGRESS) {
             booking.setStartedAt(LocalDateTime.now());
-            notificationService.notifyUser(booking.getUser().getId(), "Ride Started", 
-                    "Your ride/errand has started");
+            notificationService.notifyUserWithType(
+                    booking.getUser().getId(),
+                    "Ride Started",
+                    "Your ride/errand has started",
+                    "RIDE_STARTED",
+                    booking.getId()
+            );
         } else if (status == BookingStatus.COMPLETED) {
             booking.setCompletedAt(LocalDateTime.now());
             userService.incrementBookingCount(booking.getUser().getId());
             riderService.incrementRideCount(booking.getRider().getId());
-            notificationService.notifyUser(booking.getUser().getId(), "Ride Completed", 
-                    "Please rate your rider");
+            notificationService.notifyUserWithType(
+                    booking.getUser().getId(),
+                    "Ride Completed",
+                    "Please rate your rider",
+                    "RATE_RIDER",
+                    booking.getId()
+            );
         }
 
         Booking savedBooking = bookingRepository.save(booking);
@@ -198,11 +223,25 @@ public class BookingService {
         log.info("Booking {} cancelled by {}", bookingId, byUser ? "user" : "rider");
 
         if (byUser && booking.getRider() != null) {
-            notificationService.notifyRider(booking.getRider().getId(), "Booking Cancelled", 
-                    "User has cancelled the booking");
+            notificationService.notifyRiderWithType(
+                    booking.getRider().getId(),
+                    "Booking Cancelled",
+                    "User has cancelled the booking",
+                    "BOOKING_CANCELLED",
+                    booking.getId()
+            );
+            riderService.updateRiderStatus(booking.getRider().getId(), com.byke.model.enums.RiderStatus.AVAILABLE);
         } else if (!byUser) {
-            notificationService.notifyUser(booking.getUser().getId(), "Booking Cancelled", 
-                    "Rider has cancelled. Finding another rider...");
+            notificationService.notifyUserWithType(
+                    booking.getUser().getId(),
+                    "Booking Cancelled",
+                    "Rider has cancelled. Finding another rider...",
+                    "BOOKING_CANCELLED",
+                    booking.getId()
+            );
+            if (booking.getRider() != null) {
+                riderService.updateRiderStatus(booking.getRider().getId(), com.byke.model.enums.RiderStatus.AVAILABLE);
+            }
         }
 
         return savedBooking;
@@ -332,8 +371,13 @@ public class BookingService {
         Booking savedBooking = bookingRepository.save(booking);
         log.info("Rider {} marked reached for booking {}. User fixed OTP: {}", riderId, bookingId, otp);
         
-        notificationService.notifyUser(booking.getUser().getId(), "Rider Arrived", 
-                "Your rider has arrived! Share your OTP: " + otp);
+        notificationService.notifyUserWithType(
+                booking.getUser().getId(),
+                "Rider Arrived",
+                "Your rider has arrived! Share your OTP: " + otp,
+                "OTP_READY",
+                booking.getId()
+        );
         
         return savedBooking;
     }
@@ -361,8 +405,13 @@ public class BookingService {
         Booking savedBooking = bookingRepository.save(booking);
         log.info("Ride started for booking {} after OTP verification", bookingId);
         
-        notificationService.notifyUser(booking.getUser().getId(), "Ride Started", 
-                "Your ride has started. Enjoy your journey!");
+        notificationService.notifyUserWithType(
+                booking.getUser().getId(),
+                "Ride Started",
+                "Your ride has started. Enjoy your journey!",
+                "RIDE_STARTED",
+                booking.getId()
+        );
         
         return savedBooking;
     }
@@ -390,8 +439,14 @@ public class BookingService {
         Booking savedBooking = bookingRepository.save(booking);
         log.info("Ride completed for booking {}", bookingId);
         
-        notificationService.notifyUser(booking.getUser().getId(), "Ride Completed", 
-                "Your ride is complete! Please rate your experience.");
+        notificationService.notifyUserWithType(
+                booking.getUser().getId(),
+                "Ride Completed",
+                "Your ride is complete! Please rate your experience.",
+                "RATE_RIDER",
+                booking.getId()
+        );
+        riderService.updateRiderStatus(booking.getRider().getId(), com.byke.model.enums.RiderStatus.AVAILABLE);
         
         return savedBooking;
     }

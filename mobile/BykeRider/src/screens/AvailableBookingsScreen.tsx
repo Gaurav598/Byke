@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, {useState, useEffect, useRef, useCallback} from 'react';
 import {
   View,
   Text,
@@ -7,134 +7,194 @@ import {
   TextInput,
   SafeAreaView,
   ActivityIndicator,
-  Dimensions,
   StyleSheet,
-  Platform,
+  ScrollView,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE, Polyline } from 'react-native-maps';
-import Geolocation from 'react-native-geolocation-service';
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState, AppDispatch } from '../store';
-import { setAvailableBookings, addBid } from '../store/slices/riderSlice';
+import MapView, {Marker, PROVIDER_GOOGLE, Polyline} from 'react-native-maps';
+import {useSelector, useDispatch} from 'react-redux';
+import {RootState, AppDispatch} from '../store';
+import {setAvailableBookings, addBid} from '../store/slices/riderSlice';
 import api from '../config/api';
-import { 
-  MapPin, 
-  ChevronRight, Clock, ArrowLeft, Send, 
-  X, Navigation, User, Info
+import {
+  getCurrentLocation as fetchCurrentLocation,
+  requestLocationPermission,
+} from '../services/locationService';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {
+  MapPin,
+  ChevronRight,
+  ArrowLeft,
+  X,
+  User,
+  Info,
 } from 'lucide-react-native';
-import { Image } from 'react-native';
+import {Image} from 'react-native';
 
-const { width, height } = Dimensions.get('window');
-
-const AvailableBookingsScreen = ({ navigation }: any) => {
+const AvailableBookingsScreen = ({navigation}: any) => {
   const dispatch = useDispatch<AppDispatch>();
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [bidAmount, setBidAmount] = useState('');
-  const [currentLocation, setCurrentLocation] = useState<{latitude: number, longitude: number} | null>(null);
-  const { availableBookings } = useSelector((state: RootState) => state.rider) as any;
+  const [currentLocation, setCurrentLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const {availableBookings} = useSelector(
+    (state: RootState) => state.rider,
+  ) as any;
   const mapRef = useRef<MapView>(null);
 
-  const currentBooking = availableBookings[currentIndex];
+  const currentBooking = availableBookings[currentIndex] ?? null;
+
+  const isValidCoordinate = (value: unknown) => {
+    const num = Number(value);
+    return Number.isFinite(num) && Math.abs(num) <= 180;
+  };
+
+  const fetchAvailableBookings = useCallback(
+    async (lat?: number, lng?: number) => {
+      const latitude = lat || currentLocation?.latitude || 28.6139;
+      const longitude = lng || currentLocation?.longitude || 77.209;
+
+      setLoading(true);
+      try {
+        const response = await api.get('/bookings/available', {
+          params: {
+            latitude,
+            longitude,
+            radius: 10.0,
+          },
+        });
+
+        const rawBookings = Array.isArray(response.data)
+          ? response.data
+          : response.data?.data || [];
+
+        const bookings = rawBookings
+          .map((booking: any) => {
+            const pickupLatitude = Number(booking.pickupLatitude);
+            const pickupLongitude = Number(booking.pickupLongitude);
+            const dropLatitude = Number(booking.dropLatitude);
+            const dropLongitude = Number(booking.dropLongitude);
+
+            if (
+              !isValidCoordinate(pickupLatitude) ||
+              !isValidCoordinate(pickupLongitude) ||
+              !isValidCoordinate(dropLatitude) ||
+              !isValidCoordinate(dropLongitude)
+            ) {
+              return null;
+            }
+
+            return {
+              id: String(booking.id),
+              type: booking.serviceType?.toLowerCase() || 'ride',
+              status: booking.status?.toLowerCase() || 'bidding',
+              pickupLocation: {
+                address: booking.pickupAddress || 'Pickup location',
+                latitude: pickupLatitude,
+                longitude: pickupLongitude,
+              },
+              dropLocation: {
+                address: booking.dropAddress || 'Drop location',
+                latitude: dropLatitude,
+                longitude: dropLongitude,
+              },
+              description: booking.errandDescription || booking.parcelDescription,
+              estimatedFare: booking.estimatedFare || 100,
+              userAmount:
+                booking.userEnteredAmount || booking.estimatedFare || 100,
+              user: {
+                id: String(booking.user?.id || ''),
+                name: booking.user?.fullName || 'User',
+                phone: booking.user?.mobileNumber || '',
+                rating: 4.8,
+              },
+              createdAt: booking.createdAt || new Date().toISOString(),
+            };
+          })
+          .filter(Boolean);
+
+        dispatch(setAvailableBookings(bookings));
+        setCurrentIndex(0);
+      } catch (error: any) {
+        console.log('Error fetching bookings:', error);
+        Alert.alert(
+          'Error',
+          error.response?.data?.message || 'Failed to fetch available bookings',
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [currentLocation?.latitude, currentLocation?.longitude, dispatch],
+  );
+
+  const getCurrentLocation = useCallback(async () => {
+    try {
+      const position = await fetchCurrentLocation();
+      const {latitude, longitude} = position;
+      setCurrentLocation({latitude, longitude});
+      await fetchAvailableBookings(latitude, longitude);
+    } catch (error) {
+      console.log('Location Error:', error);
+      await fetchAvailableBookings(28.6139, 77.209);
+    }
+  }, [fetchAvailableBookings]);
 
   useEffect(() => {
-    const requestLocationPermission = async () => {
-      if (Platform.OS === 'ios') {
-        const auth = await Geolocation.requestAuthorization('whenInUse');
-        if (auth === 'granted') {
-          getCurrentLocation();
-        }
+    const initialize = async () => {
+      const granted = await requestLocationPermission();
+      if (granted) {
+        await getCurrentLocation();
       } else {
-        getCurrentLocation();
+        await fetchAvailableBookings(28.6139, 77.209);
       }
     };
-
-    requestLocationPermission();
-  }, []);
-
-  const getCurrentLocation = () => {
-    Geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        setCurrentLocation({ latitude, longitude });
-        fetchAvailableBookings(latitude, longitude);
-      },
-      (error) => {
-        console.log('Location Error:', error);
-        // Fallback to a default location if needed, or show error
-        fetchAvailableBookings(28.6139, 77.2090);
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
-    );
-  };
-
-  const fetchAvailableBookings = async (lat?: number, lng?: number) => {
-    const latitude = lat || currentLocation?.latitude || 28.6139;
-    const longitude = lng || currentLocation?.longitude || 77.2090;
-
-    setLoading(true);
-    try {
-      const response = await api.get('/bookings/available', {
-        params: {
-          latitude,
-          longitude,
-          radius: 10.0
-        }
-      });
-      
-      // Backend now returns bookings sorted by most recent first
-      const rawBookings = Array.isArray(response.data) ? response.data : (response.data?.data || []);
-      
-      const bookings = rawBookings.map((booking: any) => ({
-        id: String(booking.id),
-        type: booking.serviceType?.toLowerCase() || 'ride',
-        status: booking.status?.toLowerCase() || 'bidding',
-        pickupLocation: {
-          address: booking.pickupAddress,
-          latitude: booking.pickupLatitude,
-          longitude: booking.pickupLongitude
-        },
-        dropLocation: {
-          address: booking.dropAddress,
-          latitude: booking.dropLatitude,
-          longitude: booking.dropLongitude
-        },
-        description: booking.errandDescription || booking.parcelDescription,
-        estimatedFare: booking.estimatedFare || 100,
-        userAmount: booking.userEnteredAmount || booking.estimatedFare || 100,
-        user: {
-          id: String(booking.user?.id || ''),
-          name: booking.user?.fullName || 'User',
-          phone: booking.user?.mobileNumber || '',
-          rating: 4.8 // Mock rating
-        },
-        createdAt: booking.createdAt || new Date().toISOString(),
-      }));
-      
-      dispatch(setAvailableBookings(bookings));
-      setCurrentIndex(0);
-    } catch (error: any) {
-      console.log('Error fetching bookings:', error);
-      Alert.alert('Error', error.response?.data?.message || 'Failed to fetch available bookings');
-    } finally {
-      setLoading(false);
-    }
-  };
+    void initialize();
+  }, [fetchAvailableBookings, getCurrentLocation]);
 
   useEffect(() => {
     if (currentBooking && mapRef.current) {
       const coords = [
-        { latitude: currentBooking.pickupLocation.latitude, longitude: currentBooking.pickupLocation.longitude },
-        { latitude: currentBooking.dropLocation.latitude, longitude: currentBooking.dropLocation.longitude }
+        {
+          latitude: currentBooking.pickupLocation.latitude,
+          longitude: currentBooking.pickupLocation.longitude,
+        },
+        {
+          latitude: currentBooking.dropLocation.latitude,
+          longitude: currentBooking.dropLocation.longitude,
+        },
       ];
       mapRef.current.fitToCoordinates(coords, {
-        edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+        edgePadding: {top: 50, right: 50, bottom: 50, left: 50},
         animated: true,
       });
     }
   }, [currentBooking]);
 
+  useEffect(() => {
+    if (availableBookings.length === 0) {
+      if (currentIndex !== 0) {
+        setCurrentIndex(0);
+      }
+      setBidAmount('');
+      return;
+    }
+
+    if (currentIndex > availableBookings.length - 1) {
+      setCurrentIndex(availableBookings.length - 1);
+      setBidAmount('');
+    }
+  }, [availableBookings.length, currentIndex]);
+
   const handlePlaceBid = async () => {
+    if (!currentBooking) {
+      Alert.alert('Wait', 'Refreshing booking details. Please try again.');
+      return;
+    }
+
     if (!bidAmount || parseFloat(bidAmount) <= 0) {
       Alert.alert('Error', 'Please enter a valid bid amount');
       return;
@@ -144,7 +204,10 @@ const AvailableBookingsScreen = ({ navigation }: any) => {
     const maxAllowed = currentBooking.userAmount + 80;
 
     if (amount > maxAllowed) {
-      Alert.alert('Limit Exceeded', `You can bid at most ₹80 more than user's price (Max: ₹${maxAllowed})`);
+      Alert.alert(
+        'Limit Exceeded',
+        `You can bid at most ₹80 more than user's price (Max: ₹${maxAllowed})`,
+      );
       return;
     }
 
@@ -154,7 +217,7 @@ const AvailableBookingsScreen = ({ navigation }: any) => {
         params: {
           bookingId: currentBooking.id,
           bidAmount: amount,
-        }
+        },
       });
 
       dispatch(addBid(response.data));
@@ -162,13 +225,20 @@ const AvailableBookingsScreen = ({ navigation }: any) => {
       setBidAmount('');
       handleNext();
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'Failed to place bid');
+      Alert.alert(
+        'Error',
+        error.response?.data?.message || 'Failed to place bid',
+      );
     } finally {
       setLoading(false);
     }
   };
 
   const handleNext = () => {
+    if (availableBookings.length === 0) {
+      return;
+    }
+
     if (currentIndex < availableBookings.length - 1) {
       setCurrentIndex(prev => prev + 1);
       setBidAmount('');
@@ -184,10 +254,30 @@ const AvailableBookingsScreen = ({ navigation }: any) => {
 
   const getServiceInfo = (type: string) => {
     switch (type) {
-      case 'ride': return { icon: require('../../assets/icons/bike.png'), color: '#EAB308', label: 'Ride Request' };
-      case 'errand': return { icon: require('../../assets/icons/auto.png'), color: '#10B981', label: 'Errand Task' };
-      case 'parcel': return { icon: require('../../assets/icons/parcel.png'), color: '#3B82F6', label: 'Parcel Delivery' };
-      default: return { icon: require('../../assets/icons/bike.png'), color: '#6B7280', label: type };
+      case 'ride':
+        return {
+          icon: require('../../assets/icons/bike.png'),
+          color: '#EAB308',
+          label: 'Ride Request',
+        };
+      case 'errand':
+        return {
+          icon: require('../../assets/icons/auto.png'),
+          color: '#10B981',
+          label: 'Errand Task',
+        };
+      case 'parcel':
+        return {
+          icon: require('../../assets/icons/parcel.png'),
+          color: '#3B82F6',
+          label: 'Parcel Delivery',
+        };
+      default:
+        return {
+          icon: require('../../assets/icons/bike.png'),
+          color: '#6B7280',
+          label: type,
+        };
     }
   };
 
@@ -204,20 +294,49 @@ const AvailableBookingsScreen = ({ navigation }: any) => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backBtn}>
             <ArrowLeft size={24} color="black" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>New Requests</Text>
         </View>
         <View style={styles.emptyContainer}>
           <View style={styles.emptyIconContainer}>
-            <Image source={require('../../assets/icons/bike.png')} style={{ width: 64, height: 64, opacity: 0.5 }} />
+            <Image
+              source={require('../../assets/icons/bike.png')}
+              style={{width: 64, height: 64, opacity: 0.5}}
+            />
           </View>
           <Text style={styles.emptyTitle}>All caught up!</Text>
-          <Text style={styles.emptySubtitle}>No new requests within 10km. Stay online to get notified of new orders.</Text>
-          <TouchableOpacity onPress={() => fetchAvailableBookings()} style={styles.refreshBtn}>
+          <Text style={styles.emptySubtitle}>
+            No new requests within 10km. Stay online to get notified of new
+            orders.
+          </Text>
+          <TouchableOpacity
+            onPress={() => fetchAvailableBookings()}
+            style={styles.refreshBtn}>
             <Text style={styles.refreshText}>Refresh</Text>
           </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!currentBooking) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backBtn}>
+            <ArrowLeft size={24} color="black" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>New Requests</Text>
+        </View>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color="#000" />
+          <Text style={styles.loadingText}>Refreshing request details...</Text>
         </View>
       </SafeAreaView>
     );
@@ -237,12 +356,17 @@ const AvailableBookingsScreen = ({ navigation }: any) => {
           longitude: currentBooking.pickupLocation.longitude,
           latitudeDelta: 0.05,
           longitudeDelta: 0.05,
-        }}
-      >
+        }}>
         <Polyline
           coordinates={[
-            { latitude: currentBooking.pickupLocation.latitude, longitude: currentBooking.pickupLocation.longitude },
-            { latitude: currentBooking.dropLocation.latitude, longitude: currentBooking.dropLocation.longitude }
+            {
+              latitude: currentBooking.pickupLocation.latitude,
+              longitude: currentBooking.pickupLocation.longitude,
+            },
+            {
+              latitude: currentBooking.dropLocation.latitude,
+              longitude: currentBooking.dropLocation.longitude,
+            },
           ]}
           strokeColor="#000"
           strokeWidth={3}
@@ -252,9 +376,8 @@ const AvailableBookingsScreen = ({ navigation }: any) => {
           coordinate={{
             latitude: currentBooking.pickupLocation.latitude,
             longitude: currentBooking.pickupLocation.longitude,
-          }}
-        >
-          <View style={[styles.marker, { backgroundColor: 'black' }]}>
+          }}>
+          <View style={[styles.marker, {backgroundColor: 'black'}]}>
             <User size={20} color="white" />
           </View>
         </Marker>
@@ -262,48 +385,69 @@ const AvailableBookingsScreen = ({ navigation }: any) => {
           coordinate={{
             latitude: currentBooking.dropLocation.latitude,
             longitude: currentBooking.dropLocation.longitude,
-          }}
-        >
-          <View style={[styles.marker, { backgroundColor: '#EF4444' }]}>
+          }}>
+          <View style={[styles.marker, {backgroundColor: '#EF4444'}]}>
             <MapPin size={20} color="white" />
           </View>
         </Marker>
       </MapView>
 
       {/* Header Overlay */}
-      <SafeAreaView style={styles.headerOverlay}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtnOverlay}>
+      <View style={[styles.headerOverlay, {paddingTop: insets.top + 8}]}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtnOverlay}>
           <ArrowLeft size={24} color="black" />
         </TouchableOpacity>
         <View style={styles.counterBadge}>
-          <Text style={styles.counterText}>{currentIndex + 1} / {availableBookings.length}</Text>
+          <Text style={styles.counterText}>
+            {currentIndex + 1} / {availableBookings.length}
+          </Text>
         </View>
-      </SafeAreaView>
+      </View>
 
       {/* Booking Card */}
-      <View style={styles.cardContainer}>
+      <View
+        style={[
+          styles.cardContainer,
+          {paddingBottom: Math.max(insets.bottom + 84, 96)},
+        ]}>
         <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <View style={[styles.serviceTag, { backgroundColor: serviceInfo.color }]}>
-              <Image source={serviceInfo.icon} style={{ width: 16, height: 16, tintColor: 'white' }} />
+          <ScrollView
+            style={styles.cardScroll}
+            contentContainerStyle={styles.cardScrollContent}
+            showsVerticalScrollIndicator={false}>
+            <View style={styles.cardHeader}>
+            <View
+              style={[styles.serviceTag, {backgroundColor: serviceInfo.color}]}>
+              <Image
+                source={serviceInfo.icon}
+                style={{width: 16, height: 16, tintColor: 'white'}}
+              />
               <Text style={styles.serviceLabel}>{serviceInfo.label}</Text>
             </View>
             <View style={styles.userContainer}>
               <User size={16} color="#6B7280" />
               <Text style={styles.userName}>{currentBooking.user.name}</Text>
-              <Text style={styles.userRating}>⭐ {currentBooking.user.rating}</Text>
+              <Text style={styles.userRating}>
+                ⭐ {currentBooking.user.rating}
+              </Text>
             </View>
           </View>
 
           <View style={styles.locationContainer}>
             <View style={styles.locationRow}>
-              <View style={[styles.dot, { backgroundColor: '#10B981' }]} />
-              <Text style={styles.locationText} numberOfLines={1}>{currentBooking.pickupLocation.address}</Text>
+              <View style={[styles.dot, {backgroundColor: '#10B981'}]} />
+              <Text style={styles.locationText} numberOfLines={1}>
+                {currentBooking.pickupLocation.address}
+              </Text>
             </View>
             <View style={styles.line} />
             <View style={styles.locationRow}>
-              <View style={[styles.dot, { backgroundColor: '#EF4444' }]} />
-              <Text style={styles.locationText} numberOfLines={1}>{currentBooking.dropLocation.address}</Text>
+              <View style={[styles.dot, {backgroundColor: '#EF4444'}]} />
+              <Text style={styles.locationText} numberOfLines={1}>
+                {currentBooking.dropLocation.address}
+              </Text>
             </View>
           </View>
 
@@ -319,10 +463,14 @@ const AvailableBookingsScreen = ({ navigation }: any) => {
           <View style={styles.fareContainer}>
             <View>
               <Text style={styles.fareLabel}>User's Price</Text>
-              <Text style={styles.fareAmount}>₹{currentBooking.userAmount}</Text>
+              <Text style={styles.fareAmount}>
+                ₹{currentBooking.userAmount}
+              </Text>
             </View>
             <View style={styles.bidInputContainer}>
-              <Text style={styles.bidLabel}>Your Bid (Max ₹{currentBooking.userAmount + 80})</Text>
+              <Text style={styles.bidLabel}>
+                Your Bid (Max ₹{currentBooking.userAmount + 80})
+              </Text>
               <View style={styles.bidInputWrapper}>
                 <Text style={styles.currency}>₹</Text>
                 <TextInput
@@ -336,26 +484,26 @@ const AvailableBookingsScreen = ({ navigation }: any) => {
             </View>
           </View>
 
-          <View style={styles.actionRow}>
-            <TouchableOpacity style={styles.skipBtn} onPress={handleSkip}>
-              <X size={24} color="#6B7280" />
-              <Text style={styles.skipText}>Skip</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.bidBtn} 
-              onPress={handlePlaceBid}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <>
-                  <Text style={styles.bidBtnText}>Place Bid</Text>
-                  <ChevronRight size={20} color="white" />
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
+            <View style={styles.actionRow}>
+              <TouchableOpacity style={styles.skipBtn} onPress={handleSkip}>
+                <X size={24} color="#6B7280" />
+                <Text style={styles.skipText}>Skip</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.bidBtn}
+                onPress={handlePlaceBid}
+                disabled={loading}>
+                {loading ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <>
+                    <Text style={styles.bidBtnText}>Place Bid</Text>
+                    <ChevronRight size={20} color="white" />
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
         </View>
       </View>
     </View>
@@ -403,7 +551,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 10 : 20,
+    paddingTop: 8,
   },
   backBtnOverlay: {
     width: 48,
@@ -413,7 +561,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
@@ -436,7 +584,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingHorizontal: 16,
-    paddingBottom: Platform.OS === 'ios' ? 100 : 90,
+    paddingBottom: 96,
     paddingTop: 10,
     backgroundColor: 'transparent',
     zIndex: 999,
@@ -445,12 +593,19 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: 'white',
     borderRadius: 24,
-    padding: 20,
+    padding: 18,
+    maxHeight: 440,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
+    shadowOffset: {width: 0, height: -4},
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 10,
+  },
+  cardScroll: {
+    maxHeight: 404,
+  },
+  cardScrollContent: {
+    paddingBottom: 6,
   },
   bidInputContainer: {
     flex: 1,
@@ -624,7 +779,7 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     backgroundColor: 'black',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 4,
@@ -641,7 +796,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'white',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,

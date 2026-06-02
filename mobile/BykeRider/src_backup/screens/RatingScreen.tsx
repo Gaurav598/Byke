@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import {
   View,
   Text,
@@ -7,14 +7,14 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { useDispatch } from 'react-redux';
-import { rateBooking } from '../store/slices/bookingSlice';
-import { AppDispatch } from '../store';
+import {useDispatch} from 'react-redux';
+import {rateBooking} from '../store/slices/bookingSlice';
+import {AppDispatch} from '../store';
 
-const RatingScreen = ({ route, navigation }: any) => {
-  const { bookingId } = route.params;
+const RatingScreen = ({route, navigation}: any) => {
+  const {bookingId} = route.params;
   const dispatch = useDispatch<AppDispatch>();
-  
+
   const [rating, setRating] = useState(5);
   const [review, setReview] = useState('');
   const [loading, setLoading] = useState(false);
@@ -27,9 +27,9 @@ const RatingScreen = ({ route, navigation }: any) => {
 
     setLoading(true);
     try {
-      await dispatch(rateBooking({ bookingId, rating, review })).unwrap();
+      await dispatch(rateBooking({bookingId, rating, review})).unwrap();
       Alert.alert('Success', 'Thank you for your feedback!', [
-        { text: 'OK', onPress: () => navigation.navigate('Home') },
+        {text: 'OK', onPress: () => navigation.navigate('Home')},
       ]);
     } catch (error: any) {
       Alert.alert('Error', error);
@@ -40,21 +40,18 @@ const RatingScreen = ({ route, navigation }: any) => {
 
   return (
     <View className="flex-1 bg-white p-6">
-      <Text className="text-2xl font-bold text-gray-900 mb-2">Rate Your Ride</Text>
+      <Text className="text-2xl font-bold text-gray-900 mb-2">
+        Rate Your Ride
+      </Text>
       <Text className="text-gray-600 mb-8">
         How was your experience with the rider?
       </Text>
 
       <View className="items-center mb-8">
         <View className="flex-row space-x-4">
-          {[1, 2, 3, 4, 5].map((star) => (
-            <TouchableOpacity
-              key={star}
-              onPress={() => setRating(star)}
-            >
-              <Text className="text-5xl">
-                {star <= rating ? '⭐' : '☆'}
-              </Text>
+          {[1, 2, 3, 4, 5].map(star => (
+            <TouchableOpacity key={star} onPress={() => setRating(star)}>
+              <Text className="text-5xl">{star <= rating ? '⭐' : '☆'}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -83,19 +80,19 @@ const RatingScreen = ({ route, navigation }: any) => {
       <TouchableOpacity
         className="bg-blue-600 rounded-lg py-4 items-center"
         onPress={handleSubmitRating}
-        disabled={loading}
-      >
+        disabled={loading}>
         {loading ? (
           <ActivityIndicator color="white" />
         ) : (
-          <Text className="text-white font-semibold text-base">Submit Rating</Text>
+          <Text className="text-white font-semibold text-base">
+            Submit Rating
+          </Text>
         )}
       </TouchableOpacity>
 
       <TouchableOpacity
         className="mt-4 py-3 items-center"
-        onPress={() => navigation.navigate('Home')}
-      >
+        onPress={() => navigation.navigate('Home')}>
         <Text className="text-gray-600">Skip for now</Text>
       </TouchableOpacity>
     </View>

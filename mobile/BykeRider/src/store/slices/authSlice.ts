@@ -1,6 +1,10 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import {createSlice, createAsyncThunk, PayloadAction} from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { TOKEN_KEY, REFRESH_TOKEN_KEY, USER_PROFILE_KEY } from '../../constants/storageKeys';
+import {
+  TOKEN_KEY,
+  REFRESH_TOKEN_KEY,
+  USER_PROFILE_KEY,
+} from '../../constants/storageKeys';
 
 interface User {
   id: string;
@@ -31,12 +35,15 @@ const initialState: AuthState = {
 // Check for stored session on app start
 export const checkStoredSession = createAsyncThunk(
   'auth/checkStoredSession',
-  async (_, { rejectWithValue }) => {
+  async (_, {rejectWithValue}) => {
     try {
-      const [token, profile] = await AsyncStorage.multiGet([TOKEN_KEY, USER_PROFILE_KEY]);
+      const [token, profile] = await AsyncStorage.multiGet([
+        TOKEN_KEY,
+        USER_PROFILE_KEY,
+      ]);
       const accessToken = token[1];
       const userProfile = profile[1];
-      
+
       if (accessToken && userProfile) {
         return {
           accessToken,
@@ -47,18 +54,29 @@ export const checkStoredSession = createAsyncThunk(
     } catch (error) {
       return rejectWithValue('Failed to restore session');
     }
-  }
+  },
 );
 
 export const logout = createAsyncThunk('auth/logout', async () => {
-  await AsyncStorage.multiRemove([TOKEN_KEY, REFRESH_TOKEN_KEY, USER_PROFILE_KEY]);
+  await AsyncStorage.multiRemove([
+    TOKEN_KEY,
+    REFRESH_TOKEN_KEY,
+    USER_PROFILE_KEY,
+  ]);
 });
 
 const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    loginSuccess: (state, action: PayloadAction<{ user: User; accessToken: string; refreshToken?: string }>) => {
+    loginSuccess: (
+      state,
+      action: PayloadAction<{
+        user: User;
+        accessToken: string;
+        refreshToken?: string;
+      }>,
+    ) => {
       state.user = action.payload.user;
       state.accessToken = action.payload.accessToken;
       state.refreshToken = action.payload.refreshToken || null;
@@ -72,7 +90,7 @@ const authSlice = createSlice({
     setError: (state, action: PayloadAction<string | null>) => {
       state.error = action.payload;
     },
-    clearAuth: (state) => {
+    clearAuth: state => {
       state.user = null;
       state.accessToken = null;
       state.refreshToken = null;
@@ -80,9 +98,9 @@ const authSlice = createSlice({
       state.loading = false;
     },
   },
-  extraReducers: (builder) => {
+  extraReducers: builder => {
     builder
-      .addCase(checkStoredSession.pending, (state) => {
+      .addCase(checkStoredSession.pending, state => {
         state.loading = true;
       })
       .addCase(checkStoredSession.fulfilled, (state, action) => {
@@ -93,10 +111,10 @@ const authSlice = createSlice({
         }
         state.loading = false;
       })
-      .addCase(checkStoredSession.rejected, (state) => {
+      .addCase(checkStoredSession.rejected, state => {
         state.loading = false;
       })
-      .addCase(logout.fulfilled, (state) => {
+      .addCase(logout.fulfilled, state => {
         state.user = null;
         state.accessToken = null;
         state.refreshToken = null;
@@ -106,5 +124,6 @@ const authSlice = createSlice({
   },
 });
 
-export const { loginSuccess, setLoading, setError, clearAuth } = authSlice.actions;
+export const {loginSuccess, setLoading, setError, clearAuth} =
+  authSlice.actions;
 export default authSlice.reducer;

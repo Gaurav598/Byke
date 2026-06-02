@@ -1,41 +1,37 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
-import { useDispatch, useSelector } from 'react-redux';
-import { logout } from '../store/slices/authSlice';
-import { AppDispatch, RootState } from '../store';
+import {View, Text, TouchableOpacity, ScrollView, Alert} from 'react-native';
+import {useDispatch, useSelector} from 'react-redux';
+import {logout} from '../store/slices/authSlice';
+import {AppDispatch, RootState} from '../store';
 
-const ProfileScreen = ({ navigation }: any) => {
+const ProfileScreen = ({navigation}: any) => {
   const dispatch = useDispatch<AppDispatch>();
-  const { user } = useSelector((state: RootState) => state.auth);
+  const {user} = useSelector((state: RootState) => state.auth);
 
   const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            await dispatch(logout());
-            navigation.replace('Login');
-          },
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      {text: 'Cancel', style: 'cancel'},
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: async () => {
+          await dispatch(logout());
+          navigation.replace('Login');
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const menuItems = [
-    { icon: '📋', title: 'My Bookings', screen: 'MyBookings' },
-    { icon: '💳', title: 'Payment Methods', screen: null },
-    { icon: '📍', title: 'Saved Addresses', screen: null },
-    { icon: '⭐', title: 'My Ratings', screen: null },
-    { icon: '🎁', title: 'Offers & Promotions', screen: null },
-    { icon: '❓', title: 'Help & Support', screen: null },
-    { icon: '⚙️', title: 'Settings', screen: null },
-    { icon: '📄', title: 'Terms & Conditions', screen: null },
-    { icon: '🔒', title: 'Privacy Policy', screen: null },
+    {icon: '📋', title: 'My Bookings', screen: 'MyBookings'},
+    {icon: '💳', title: 'Payment Methods', screen: null},
+    {icon: '📍', title: 'Saved Addresses', screen: null},
+    {icon: '⭐', title: 'My Ratings', screen: null},
+    {icon: '🎁', title: 'Offers & Promotions', screen: null},
+    {icon: '❓', title: 'Help & Support', screen: null},
+    {icon: '⚙️', title: 'Settings', screen: null},
+    {icon: '📄', title: 'Terms & Conditions', screen: null},
+    {icon: '🔒', title: 'Privacy Policy', screen: null},
   ];
 
   return (
@@ -62,12 +58,16 @@ const ProfileScreen = ({ navigation }: any) => {
                 if (item.screen) {
                   navigation.navigate(item.screen);
                 } else {
-                  Alert.alert('Coming Soon', 'This feature will be available soon');
+                  Alert.alert(
+                    'Coming Soon',
+                    'This feature will be available soon',
+                  );
                 }
-              }}
-            >
+              }}>
               <Text className="text-2xl mr-4">{item.icon}</Text>
-              <Text className="flex-1 text-gray-900 font-medium">{item.title}</Text>
+              <Text className="flex-1 text-gray-900 font-medium">
+                {item.title}
+              </Text>
               <Text className="text-gray-400">›</Text>
             </TouchableOpacity>
           ))}
@@ -75,8 +75,7 @@ const ProfileScreen = ({ navigation }: any) => {
 
         <TouchableOpacity
           className="bg-red-600 rounded-lg py-4 items-center mt-6"
-          onPress={handleLogout}
-        >
+          onPress={handleLogout}>
           <Text className="text-white font-semibold text-base">Logout</Text>
         </TouchableOpacity>
 

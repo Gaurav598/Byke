@@ -1,6 +1,12 @@
-import React, { useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, SafeAreaView } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import React, {useState} from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  SafeAreaView,
+} from 'react-native';
+import {useNavigation} from '@react-navigation/native';
 
 const NotificationsScreen = () => {
   const navigation = useNavigation();
@@ -30,17 +36,21 @@ const NotificationsScreen = () => {
 
   const markAsRead = (id: string) => {
     setNotifications(prev =>
-      prev.map(n => (n.id === id ? { ...n, read: true } : n))
+      prev.map(n => (n.id === id ? {...n, read: true} : n)),
     );
   };
 
-  const renderItem = ({ item }: any) => (
+  const renderItem = ({item}: any) => (
     <TouchableOpacity
-      className={`p-4 border-b border-gray-100 ${item.read ? 'bg-white' : 'bg-blue-50'}`}
-      onPress={() => markAsRead(item.id)}
-    >
+      className={`p-4 border-b border-gray-100 ${
+        item.read ? 'bg-white' : 'bg-blue-50'
+      }`}
+      onPress={() => markAsRead(item.id)}>
       <View className="flex-row justify-between items-start">
-        <Text className={`font-bold text-gray-900 ${item.read ? '' : 'text-blue-600'}`}>
+        <Text
+          className={`font-bold text-gray-900 ${
+            item.read ? '' : 'text-blue-600'
+          }`}>
           {item.title}
         </Text>
         <Text className="text-xs text-gray-500">{item.time}</Text>

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, {useState, useRef} from 'react';
 import {
   View,
   Text,
@@ -10,21 +10,21 @@ import {
   ActivityIndicator,
   SafeAreaView,
   StyleSheet,
-  Dimensions,
-  Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import auth from '@react-native-firebase/auth';
-import { useDispatch } from 'react-redux';
-import { loginSuccess, setLoading } from '../store/slices/authSlice';
-import { AppDispatch } from '../store';
+import {useDispatch} from 'react-redux';
+import {loginSuccess, setLoading} from '../store/slices/authSlice';
+import {AppDispatch} from '../store';
 import api from '../config/api';
-import { ChevronLeft, Phone, ShieldCheck, ArrowRight } from 'lucide-react-native';
-import { API_BASE_URL } from '../config/env';
-import { TOKEN_KEY, REFRESH_TOKEN_KEY, USER_PROFILE_KEY } from '../constants/storageKeys';
-import { getFCMToken } from '../services/notificationService';
-
-const { width, height } = Dimensions.get('window');
+import {ChevronLeft} from 'lucide-react-native';
+import {API_BASE_URL} from '../config/env';
+import {
+  TOKEN_KEY,
+  REFRESH_TOKEN_KEY,
+  USER_PROFILE_KEY,
+} from '../constants/storageKeys';
+import {getFCMToken} from '../services/notificationService';
 
 const LoginScreen = () => {
   const [phone, setPhone] = useState('');
@@ -42,14 +42,20 @@ const LoginScreen = () => {
     }
     setLoadingState(true);
     try {
-      const confirmationResult = await auth().signInWithPhoneNumber('+91' + phone);
+      const confirmationResult = await auth().signInWithPhoneNumber(
+        '+91' + phone,
+      );
       setConfirmation(confirmationResult);
       setOtpSent(true);
     } catch (error: any) {
       let msg = 'Failed to send OTP';
-      if (error.code === 'auth/invalid-phone-number') msg = 'Invalid phone number format';
-      else if (error.code === 'auth/too-many-requests') msg = 'Too many requests. Please try again later';
-      else if (error.message) msg = error.message;
+      if (error.code === 'auth/invalid-phone-number') {
+        msg = 'Invalid phone number format';
+      } else if (error.code === 'auth/too-many-requests') {
+        msg = 'Too many requests. Please try again later';
+      } else if (error.message) {
+        msg = error.message;
+      }
       Alert.alert('Error', msg);
     } finally {
       setLoadingState(false);
@@ -75,21 +81,24 @@ const LoginScreen = () => {
         mobileNumber: `+91${phone}`,
         fullName: `Rider ${phone.slice(-4)}`,
       });
-      const { accessToken, refreshToken, userId, fullName, profilePhotoUrl } = response.data;
-      
-      // Register FCM token for push notifications
+      const {accessToken, refreshToken, userId, fullName, profilePhotoUrl} =
+        response.data;
+
       try {
         const fcmToken = await getFCMToken();
         if (fcmToken) {
-          await api.post('/api/rider/fcm-token', { fcmToken }, {
-            headers: { Authorization: `Bearer ${accessToken}` }
-          });
-          console.log('FCM token registered successfully');
+          await api.post(
+            '/user/fcm-token',
+            {fcmToken},
+            {
+              headers: {Authorization: `Bearer ${accessToken}`},
+            },
+          );
         }
       } catch (fcmError) {
         console.log('FCM token registration failed:', fcmError);
       }
-      
+
       const userPayload = {
         id: String(userId),
         name: fullName || `Rider ${phone.slice(-4)}`,
@@ -99,13 +108,18 @@ const LoginScreen = () => {
       };
       await AsyncStorage.multiSet([
         [TOKEN_KEY, accessToken],
-        ...(refreshToken ? [[REFRESH_TOKEN_KEY, refreshToken]] as [string, string][] : []),
+        ...(refreshToken
+          ? ([[REFRESH_TOKEN_KEY, refreshToken]] as [string, string][])
+          : []),
         [USER_PROFILE_KEY, JSON.stringify(userPayload)],
       ]);
-      dispatch(loginSuccess({ user: userPayload, accessToken }));
+      dispatch(loginSuccess({user: userPayload, accessToken}));
     } catch (error: any) {
       if (error.code === 'ERR_NETWORK' || !error.response) {
-        Alert.alert('Network Error', `Cannot connect to server at ${API_BASE_URL}.`);
+        Alert.alert(
+          'Network Error',
+          `Cannot connect to server at ${API_BASE_URL}.`,
+        );
       } else {
         Alert.alert('Error', error.response?.data?.message || 'Login failed');
       }
@@ -118,150 +132,108 @@ const LoginScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+        style={{flex: 1}}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.content}>
-          {/* Top Branding Section */}
-          <View style={styles.brandSection}>
-            <View style={styles.logoContainer}>
-              <Text style={styles.logoText}>BYKE</Text>
-              <View style={styles.riderBadge}>
-                <Text style={styles.riderBadgeText}>CAPTAIN</Text>
-              </View>
-            </View>
-          </View>
-
           {otpSent && (
             <TouchableOpacity
               onPress={() => {
                 setOtpSent(false);
                 setOtp('');
               }}
-              style={styles.backBtn}
-            >
-              <ChevronLeft size={24} color="black" strokeWidth={3} />
+              style={styles.backBtn}>
+              <ChevronLeft size={24} color="#374151" />
             </TouchableOpacity>
           )}
 
-          <View style={styles.formContainer}>
-            <Text style={styles.title}>{otpSent ? 'Verification' : 'Welcome Back'}</Text>
+          <View style={styles.header}>
+            <Text style={styles.title}>
+              {otpSent ? 'Verify OTP' : 'Captain Login'}
+            </Text>
             <Text style={styles.subtitle}>
               {otpSent
-                ? `Enter the 6-digit code sent to +91 ${phone}`
-                : 'Login to your captain account to start earning today.'}
+                ? `Code sent to +91 ${phone}`
+                : 'Enter your mobile number to continue'}
             </Text>
+          </View>
 
-            {!otpSent ? (
-              <>
-                <View style={styles.inputWrapper}>
-                  <Text style={styles.label}>Mobile Number</Text>
-                  <View style={styles.phoneInputContainer}>
-                    <View style={styles.countryCodeContainer}>
-                      <Text style={styles.countryCode}>+91</Text>
-                    </View>
-                    <TextInput
-                      style={styles.phoneInput}
-                      placeholder="00000 00000"
-                      placeholderTextColor="#9CA3AF"
-                      keyboardType="number-pad"
-                      maxLength={10}
-                      value={phone}
-                      onChangeText={setPhone}
-                    />
-                    <Phone size={20} color="#D1D5DB" style={styles.inputIcon} />
-                  </View>
-                </View>
-
-                <TouchableOpacity
-                  onPress={sendOTP}
-                  disabled={loading || phone.length !== 10}
-                  style={[
-                    styles.primaryButton,
-                    (loading || phone.length !== 10) && styles.buttonDisabled,
-                  ]}
-                >
-                  {loading ? (
-                    <ActivityIndicator color="black" />
-                  ) : (
-                    <>
-                      <Text style={styles.primaryButtonText}>Send OTP</Text>
-                      <ArrowRight size={20} color="black" strokeWidth={3} />
-                    </>
-                  )}
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <View style={styles.otpSection}>
-                  <Text style={styles.label}>One-Time Password</Text>
-                  <TouchableOpacity
-                    activeOpacity={1}
-                    onPress={() => otpInputRef.current?.focus()}
-                    style={styles.otpWrapper}
-                  >
-                    {Array.from({ length: 6 }).map((_, i) => (
-                      <View
-                        key={i}
-                        style={[
-                          styles.otpBox,
-                          otp[i] ? styles.otpBoxFilled : null,
-                          otp.length === i ? styles.otpBoxActive : null,
-                        ]}
-                      >
-                        <Text style={styles.otpText}>{otp[i] ?? ''}</Text>
-                      </View>
-                    ))}
-                  </TouchableOpacity>
+          {!otpSent ? (
+            <>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Mobile Number</Text>
+                <View style={styles.phoneRow}>
+                  <Text style={styles.countryCode}>+91</Text>
                   <TextInput
-                    ref={otpInputRef}
-                    style={styles.hiddenInput}
-                    value={otp}
-                    onChangeText={setOtp}
+                    style={styles.input}
+                    placeholder="Enter 10-digit number"
+                    placeholderTextColor="#9CA3AF"
                     keyboardType="number-pad"
-                    maxLength={6}
-                    autoFocus
+                    maxLength={10}
+                    value={phone}
+                    onChangeText={setPhone}
                   />
                 </View>
-
+              </View>
+              <TouchableOpacity
+                onPress={sendOTP}
+                disabled={loading}
+                style={[styles.button, loading && {opacity: 0.5}]}>
+                {loading ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text style={styles.buttonText}>Send OTP</Text>
+                )}
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Enter 6-Digit Code</Text>
                 <TouchableOpacity
-                  onPress={verifyOTP}
-                  disabled={loading || otp.length !== 6}
-                  style={[
-                    styles.primaryButton,
-                    (loading || otp.length !== 6) && styles.buttonDisabled,
-                  ]}
-                >
-                  {loading ? (
-                    <ActivityIndicator color="black" />
-                  ) : (
-                    <>
-                      <Text style={styles.primaryButtonText}>Verify & Continue</Text>
-                      <ShieldCheck size={20} color="black" strokeWidth={2.5} />
-                    </>
-                  )}
+                  activeOpacity={1}
+                  onPress={() => otpInputRef.current?.focus()}
+                  style={styles.otpContainer}>
+                  {Array.from({length: 6}).map((_, i) => (
+                    <View
+                      key={i}
+                      style={[
+                        styles.otpBox,
+                        otp[i] ? styles.otpBoxFilled : null,
+                      ]}>
+                      <Text style={styles.otpText}>{otp[i] ?? ''}</Text>
+                    </View>
+                  ))}
                 </TouchableOpacity>
+                <TextInput
+                  ref={otpInputRef}
+                  style={styles.hiddenInput}
+                  value={otp}
+                  onChangeText={setOtp}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  autoFocus
+                />
+              </View>
 
-                <TouchableOpacity
-                  onPress={sendOTP}
-                  style={styles.resendBtn}
-                  disabled={loading}
-                >
-                  <Text style={styles.resendText}>
-                    Didn't receive code? <Text style={styles.resendLink}>Resend OTP</Text>
-                  </Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
+              <TouchableOpacity
+                onPress={verifyOTP}
+                disabled={loading}
+                style={[styles.button, loading && {opacity: 0.5}]}>
+                {loading ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text style={styles.buttonText}>Verify & Continue</Text>
+                )}
+              </TouchableOpacity>
 
-          {/* Bottom Footer */}
-          <View style={styles.footer}>
-            <View style={styles.securityBadge}>
-              <ShieldCheck size={14} color="#10B981" />
-              <Text style={styles.securityText}>Secure End-to-End Encryption</Text>
-            </View>
-          </View>
+              <TouchableOpacity onPress={sendOTP} style={styles.resendButton}>
+                <Text style={styles.resendText}>
+                  Didn't receive code?{' '}
+                  <Text style={styles.resendLink}>Resend</Text>
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -269,203 +241,66 @@ const LoginScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
+  container: {flex: 1, backgroundColor: 'white'},
   content: {
     flex: 1,
     paddingHorizontal: 24,
-  },
-  brandSection: {
-    alignItems: 'center',
-    marginTop: height * 0.08,
-    marginBottom: 40,
-  },
-  logoContainer: {
-    alignItems: 'center',
-  },
-  logoText: {
-    fontSize: 42,
-    fontWeight: '900',
-    color: 'black',
-    letterSpacing: -2,
-  },
-  riderBadge: {
-    backgroundColor: '#EAB308',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 8,
-    marginTop: -5,
-  },
-  riderBadgeText: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: 'black',
-    letterSpacing: 2,
-  },
-  backBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#F9FAFB',
     justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
+    paddingBottom: 40,
   },
-  formContainer: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '900',
-    color: 'black',
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 15,
-    color: '#6B7280',
-    lineHeight: 22,
-    fontWeight: '600',
-    marginBottom: 40,
-  },
-  inputWrapper: {
-    marginBottom: 30,
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: '900',
-    color: '#9CA3AF',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 12,
-    marginLeft: 4,
-  },
-  phoneInputContainer: {
+  backBtn: {position: 'absolute', top: 20, left: 24, zIndex: 10},
+  header: {marginBottom: 48},
+  title: {fontSize: 32, fontWeight: '700', color: '#111827', marginBottom: 8},
+  subtitle: {fontSize: 16, color: '#6B7280', lineHeight: 24},
+  inputContainer: {marginBottom: 32},
+  label: {fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 12},
+  phoneRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
-    height: 64,
-    paddingHorizontal: 4,
-  },
-  countryCodeContainer: {
-    paddingHorizontal: 16,
-    borderRightWidth: 1,
-    borderRightColor: '#E5E7EB',
-    height: 30,
-    justifyContent: 'center',
+    borderColor: '#D1D5DB',
+    borderRadius: 12,
+    backgroundColor: '#F9FAFB',
   },
   countryCode: {
     fontSize: 16,
-    fontWeight: '800',
-    color: 'black',
-  },
-  phoneInput: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: '800',
-    color: 'black',
-    paddingHorizontal: 16,
-  },
-  inputIcon: {
-    marginRight: 16,
-  },
-  primaryButton: {
-    backgroundColor: '#EAB308',
-    height: 64,
-    borderRadius: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#EAB308',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-    elevation: 8,
-  },
-  primaryButtonText: {
-    fontSize: 16,
-    fontWeight: '900',
-    color: 'black',
-    marginRight: 10,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  buttonDisabled: {
-    backgroundColor: '#F3F4F6',
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  otpSection: {
-    marginBottom: 40,
-  },
-  otpWrapper: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  otpBox: {
-    width: (width - 100) / 6,
-    height: 60,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  otpBoxActive: {
-    borderColor: '#EAB308',
-    borderWidth: 2,
-    backgroundColor: '#fff',
-  },
-  otpBoxFilled: {
-    borderColor: 'black',
-    backgroundColor: '#fff',
-  },
-  otpText: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: 'black',
-  },
-  hiddenInput: {
-    position: 'absolute',
-    opacity: 0,
-  },
-  resendBtn: {
-    alignItems: 'center',
-    marginTop: 25,
-  },
-  resendText: {
-    fontSize: 14,
     fontWeight: '600',
-    color: '#9CA3AF',
+    color: '#111827',
+    paddingLeft: 16,
+    paddingRight: 12,
   },
-  resendLink: {
-    color: 'black',
-    fontWeight: '900',
+  input: {
+    flex: 1,
+    fontSize: 16,
+    color: '#111827',
+    paddingVertical: 16,
+    paddingRight: 16,
   },
-  footer: {
-    paddingBottom: 20,
+  button: {
+    backgroundColor: '#111827',
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
+    marginTop: 8,
   },
-  securityBadge: {
-    flexDirection: 'row',
+  buttonText: {fontSize: 16, fontWeight: '600', color: 'white'},
+  otpContainer: {flexDirection: 'row', justifyContent: 'space-between'},
+  otpBox: {
+    width: 48,
+    height: 56,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
     alignItems: 'center',
-    backgroundColor: '#D1FAE5',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
+    justifyContent: 'center',
+    backgroundColor: '#F9FAFB',
   },
-  securityText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#065F46',
-    marginLeft: 6,
-    textTransform: 'uppercase',
-  },
+  otpBoxFilled: {borderColor: '#111827', backgroundColor: 'white'},
+  otpText: {fontSize: 24, fontWeight: '600', color: '#111827'},
+  hiddenInput: {position: 'absolute', opacity: 0},
+  resendButton: {alignItems: 'center', marginTop: 24},
+  resendText: {fontSize: 14, color: '#6B7280'},
+  resendLink: {color: '#111827', fontWeight: '600'},
 });
 
 export default LoginScreen;

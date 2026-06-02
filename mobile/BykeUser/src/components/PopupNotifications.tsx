@@ -1,25 +1,23 @@
-import React, { useEffect, useRef } from 'react';
+import React, {useEffect, useRef} from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Animated,
-  Dimensions,
   Platform,
 } from 'react-native';
-import { X, Bell, CheckCircle, AlertCircle, Info } from 'lucide-react-native';
-import { useNotification } from '../context/NotificationContext';
-
-const { width } = Dimensions.get('window');
+import {X, Bell, CheckCircle, AlertCircle} from 'lucide-react-native';
+import {useNotification} from '../context/NotificationContext';
 
 const NotificationItem: React.FC<{
   id: string;
   title: string;
   body: string;
   type?: 'info' | 'success' | 'warning' | 'error';
-}> = ({ id, title, body, type = 'info' }) => {
-  const { hideNotification } = useNotification();
+  onPress?: () => void;
+}> = ({id, title, body, type = 'info', onPress}) => {
+  const {hideNotification} = useNotification();
   const translateY = useRef(new Animated.Value(-150)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -102,11 +100,19 @@ const NotificationItem: React.FC<{
         {
           backgroundColor: getBgColor(),
           borderColor: getBorderColor(),
-          transform: [{ translateY }],
+          transform: [{translateY}],
           opacity,
         },
-      ]}
-    >
+      ]}>
+      <TouchableOpacity
+        style={styles.tapArea}
+        activeOpacity={0.85}
+        onPress={() => {
+          if (onPress) {
+            onPress();
+          }
+          hideNotification(id);
+        }}>
       <View style={styles.iconContainer}>{getIcon()}</View>
       <View style={styles.content}>
         <Text style={styles.title} numberOfLines={1}>
@@ -116,27 +122,33 @@ const NotificationItem: React.FC<{
           {body}
         </Text>
       </View>
-      <TouchableOpacity style={styles.closeButton} onPress={() => hideNotification(id)}>
+      <TouchableOpacity
+        style={styles.closeButton}
+        onPress={() => hideNotification(id)}>
         <X size={18} color="#6B7280" />
+      </TouchableOpacity>
       </TouchableOpacity>
     </Animated.View>
   );
 };
 
 export const PopupNotifications: React.FC = () => {
-  const { notifications } = useNotification();
+  const {notifications} = useNotification();
 
-  if (notifications.length === 0) return null;
+  if (notifications.length === 0) {
+    return null;
+  }
 
   return (
     <View style={styles.wrapper} pointerEvents="box-none">
-      {notifications.map((notification) => (
+      {notifications.map(notification => (
         <NotificationItem
           key={notification.id}
           id={notification.id}
           title={notification.title}
           body={notification.body}
           type={notification.type}
+          onPress={notification.onPress}
         />
       ))}
     </View>
@@ -154,17 +166,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-    marginBottom: 10,
+    padding: 0,
+    overflow: 'hidden',
     borderRadius: 16,
     borderWidth: 1,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 6,
+    marginBottom: 10,
+  },
+  tapArea: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
   },
   iconContainer: {
     marginRight: 12,

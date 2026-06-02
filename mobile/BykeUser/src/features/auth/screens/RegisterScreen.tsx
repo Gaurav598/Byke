@@ -1,21 +1,30 @@
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, Alert,
-  KeyboardAvoidingView, Platform, ActivityIndicator,
-  SafeAreaView, StyleSheet, Image,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+  SafeAreaView,
+  StyleSheet,
+  Image,
 } from 'react-native';
-import { launchImageLibrary } from 'react-native-image-picker';
+import {launchImageLibrary} from 'react-native-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useDispatch, useSelector } from 'react-redux';
-import { loginSuccess } from '../../../store/slices/authSlice';
-import { RootState, AppDispatch } from '../../../store';
+import {useDispatch, useSelector} from 'react-redux';
+import {loginSuccess} from '../../../store/slices/authSlice';
+import {RootState, AppDispatch} from '../../../store';
 import api from '../../../config/api';
-import { USER_PROFILE_KEY } from '../../../constants/storageKeys';
-import { User, Camera } from 'lucide-react-native';
+import {USER_PROFILE_KEY} from '../../../constants/storageKeys';
+import {User, Camera} from 'lucide-react-native';
 
 const RegisterScreen = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { pendingToken, pendingUserId, pendingPhone, pendingRefreshToken } = useSelector((s: RootState) => s.auth);
+  const {pendingToken, pendingUserId, pendingPhone, pendingRefreshToken} =
+    useSelector((s: RootState) => s.auth);
 
   const [fullName, setFullName] = useState('');
   const [photoUri, setPhotoUri] = useState<string | null>(null);
@@ -23,7 +32,12 @@ const RegisterScreen = () => {
   const [loading, setLoading] = useState(false);
 
   const pickPhoto = async () => {
-    const result = await launchImageLibrary({ mediaType: 'photo', quality: 0.8, maxWidth: 800, maxHeight: 800 });
+    const result = await launchImageLibrary({
+      mediaType: 'photo',
+      quality: 0.8,
+      maxWidth: 800,
+      maxHeight: 800,
+    });
     if (!result.didCancel && result.assets && result.assets[0]?.uri) {
       setPhotoUri(result.assets[0].uri);
     }
@@ -33,9 +47,16 @@ const RegisterScreen = () => {
     try {
       setUploading(true);
       const formData = new FormData();
-      formData.append('file', { uri, type: 'image/jpeg', name: 'profile.jpg' } as any);
+      formData.append('file', {
+        uri,
+        type: 'image/jpeg',
+        name: 'profile.jpg',
+      } as any);
       const response = await api.post('/upload/profile-photo', formData, {
-        headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${pendingToken}` },
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${pendingToken}`,
+        },
       });
       return typeof response.data === 'string' ? response.data : null;
     } catch (e) {
@@ -48,18 +69,23 @@ const RegisterScreen = () => {
 
   const handleRegister = async () => {
     if (!fullName.trim() || fullName.trim().length < 2) {
-      Alert.alert('Error', 'Please enter your full name (at least 2 characters)');
+      Alert.alert(
+        'Error',
+        'Please enter your full name (at least 2 characters)',
+      );
       return;
     }
     setLoading(true);
     try {
       let profilePhotoUrl: string | null = null;
-      if (photoUri) profilePhotoUrl = await uploadPhoto(photoUri);
+      if (photoUri) {
+        profilePhotoUrl = await uploadPhoto(photoUri);
+      }
 
-      const response = await api.post(
+      await api.post(
         '/user/complete-profile',
-        { fullName: fullName.trim(), profilePhotoUrl: profilePhotoUrl || '' },
-        { headers: { Authorization: `Bearer ${pendingToken}` } }
+        {fullName: fullName.trim(), profilePhotoUrl: profilePhotoUrl || ''},
+        {headers: {Authorization: `Bearer ${pendingToken}`}},
       );
 
       const userPayload = {
@@ -71,9 +97,18 @@ const RegisterScreen = () => {
       };
 
       await AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(userPayload));
-      dispatch(loginSuccess({ user: userPayload, token: pendingToken!, refreshToken: pendingRefreshToken || undefined }));
+      dispatch(
+        loginSuccess({
+          user: userPayload,
+          token: pendingToken!,
+          refreshToken: pendingRefreshToken || undefined,
+        }),
+      );
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'Registration failed');
+      Alert.alert(
+        'Error',
+        error.response?.data?.message || 'Registration failed',
+      );
     } finally {
       setLoading(false);
     }
@@ -81,15 +116,19 @@ const RegisterScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView
+        style={{flex: 1}}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.content}>
           <Text style={styles.title}>Complete Profile</Text>
-          <Text style={styles.subtitle}>Just a few details to get you started</Text>
+          <Text style={styles.subtitle}>
+            Just a few details to get you started
+          </Text>
 
           {/* Profile Photo */}
           <TouchableOpacity onPress={pickPhoto} style={styles.photoContainer}>
             {photoUri ? (
-              <Image source={{ uri: photoUri }} style={styles.photo} />
+              <Image source={{uri: photoUri}} style={styles.photo} />
             ) : (
               <View style={styles.photoPlaceholder}>
                 <User size={48} color="#9CA3AF" />
@@ -99,7 +138,9 @@ const RegisterScreen = () => {
               <Camera size={18} color="white" />
             </View>
           </TouchableOpacity>
-          <Text style={styles.photoHint}>Tap to add profile photo (optional)</Text>
+          <Text style={styles.photoHint}>
+            Tap to add profile photo (optional)
+          </Text>
 
           {/* Full Name */}
           <View style={styles.inputWrapper}>
@@ -122,12 +163,13 @@ const RegisterScreen = () => {
           <TouchableOpacity
             onPress={handleRegister}
             disabled={loading || uploading}
-            style={[styles.btn, (loading || uploading) && { opacity: 0.6 }]}
-          >
+            style={[styles.btn, (loading || uploading) && {opacity: 0.6}]}>
             {loading || uploading ? (
               <ActivityIndicator color="black" />
             ) : (
-              <Text style={styles.btnText}>{uploading ? 'Uploading...' : 'GET STARTED'}</Text>
+              <Text style={styles.btnText}>
+                {uploading ? 'Uploading...' : 'GET STARTED'}
+              </Text>
             )}
           </TouchableOpacity>
         </View>
@@ -137,22 +179,102 @@ const RegisterScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAFA' },
-  content: { flex: 1, paddingHorizontal: 28, justifyContent: 'center' },
-  title: { fontSize: 32, fontWeight: '900', color: 'black', marginBottom: 8, textAlign: 'center' },
-  subtitle: { fontSize: 15, color: '#9CA3AF', fontWeight: '600', marginBottom: 40, textAlign: 'center' },
-  photoContainer: { alignSelf: 'center', marginBottom: 8, position: 'relative' },
-  photo: { width: 110, height: 110, borderRadius: 55, borderWidth: 4, borderColor: '#EAB308' },
-  photoPlaceholder: { width: 110, height: 110, borderRadius: 55, backgroundColor: '#F3F4F6', borderWidth: 2, borderColor: '#E5E7EB', borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' },
-  cameraBtn: { position: 'absolute', bottom: 4, right: 4, backgroundColor: '#EAB308', width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: 'white' },
-  photoHint: { textAlign: 'center', color: '#9CA3AF', fontSize: 12, fontWeight: '600', marginBottom: 32 },
-  inputWrapper: { marginBottom: 16 },
-  label: { fontSize: 13, fontWeight: '900', color: '#374151', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
-  input: { backgroundColor: 'white', borderRadius: 16, borderWidth: 1.5, borderColor: '#E5E7EB', paddingHorizontal: 20, paddingVertical: 18, fontSize: 18, fontWeight: '700', color: 'black' },
-  infoBox: { backgroundColor: '#F9FAFB', borderRadius: 12, padding: 16, marginBottom: 32, borderWidth: 1, borderColor: '#F3F4F6' },
-  infoText: { fontSize: 15, color: '#374151', fontWeight: '700' },
-  btn: { backgroundColor: '#EAB308', borderRadius: 16, paddingVertical: 20, alignItems: 'center', shadowColor: '#EAB308', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 16, elevation: 8 },
-  btnText: { fontSize: 16, fontWeight: '900', color: 'black', letterSpacing: 1 },
+  container: {flex: 1, backgroundColor: '#FAFAFA'},
+  content: {flex: 1, paddingHorizontal: 28, justifyContent: 'center'},
+  title: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: 'black',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 15,
+    color: '#9CA3AF',
+    fontWeight: '600',
+    marginBottom: 40,
+    textAlign: 'center',
+  },
+  photoContainer: {alignSelf: 'center', marginBottom: 8, position: 'relative'},
+  photo: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    borderWidth: 4,
+    borderColor: '#EAB308',
+  },
+  photoPlaceholder: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cameraBtn: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    backgroundColor: '#EAB308',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: 'white',
+  },
+  photoHint: {
+    textAlign: 'center',
+    color: '#9CA3AF',
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 32,
+  },
+  inputWrapper: {marginBottom: 16},
+  label: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#374151',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    fontSize: 18,
+    fontWeight: '700',
+    color: 'black',
+  },
+  infoBox: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 32,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+  },
+  infoText: {fontSize: 15, color: '#374151', fontWeight: '700'},
+  btn: {
+    backgroundColor: '#EAB308',
+    borderRadius: 16,
+    paddingVertical: 20,
+    alignItems: 'center',
+    shadowColor: '#EAB308',
+    shadowOffset: {width: 0, height: 8},
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  btnText: {fontSize: 16, fontWeight: '900', color: 'black', letterSpacing: 1},
 });
 
 export default RegisterScreen;

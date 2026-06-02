@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -8,21 +8,21 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { useDispatch, useSelector } from 'react-redux';
-import { createBooking } from '../store/slices/bookingSlice';
-import { AppDispatch, RootState } from '../store';
-import MapView, { Marker } from 'react-native-maps';
+import {useDispatch, useSelector} from 'react-redux';
+import {createBooking} from '../store/slices/bookingSlice';
+import {AppDispatch, RootState} from '../store';
+import MapView, {Marker} from 'react-native-maps';
 import Geolocation from 'react-native-geolocation-service';
 
-const BookingScreen = ({ route, navigation }: any) => {
-  const { serviceType } = route.params;
+const BookingScreen = ({route, navigation}: any) => {
+  const {serviceType} = route.params;
   const dispatch = useDispatch<AppDispatch>();
-  const { loading } = useSelector((state: RootState) => state.booking);
+  const {loading} = useSelector((state: RootState) => state.booking);
 
   const [pickupAddress, setPickupAddress] = useState('');
-  const [pickupCoords, setPickupCoords] = useState({ latitude: 0, longitude: 0 });
+  const [pickupCoords, setPickupCoords] = useState({latitude: 0, longitude: 0});
   const [dropAddress, setDropAddress] = useState('');
-  const [dropCoords, setDropCoords] = useState({ latitude: 0, longitude: 0 });
+  const [dropCoords, setDropCoords] = useState({latitude: 0, longitude: 0});
   const [errandDescription, setErrandDescription] = useState('');
   const [errandItems, setErrandItems] = useState('');
   const [estimatedBudget, setEstimatedBudget] = useState('');
@@ -30,7 +30,10 @@ const BookingScreen = ({ route, navigation }: any) => {
   const [parcelWeight, setParcelWeight] = useState('');
   const [recipientName, setRecipientName] = useState('');
   const [recipientPhone, setRecipientPhone] = useState('');
-  const [currentLocation, setCurrentLocation] = useState({ latitude: 28.6139, longitude: 77.2090 });
+  const [currentLocation, setCurrentLocation] = useState({
+    latitude: 28.6139,
+    longitude: 77.209,
+  });
 
   useEffect(() => {
     getCurrentLocation();
@@ -38,15 +41,15 @@ const BookingScreen = ({ route, navigation }: any) => {
 
   const getCurrentLocation = () => {
     Geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        setCurrentLocation({ latitude, longitude });
-        setPickupCoords({ latitude, longitude });
+      position => {
+        const {latitude, longitude} = position.coords;
+        setCurrentLocation({latitude, longitude});
+        setPickupCoords({latitude, longitude});
       },
-      (error) => {
+      error => {
         console.log(error);
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+      {enableHighAccuracy: true, timeout: 15000, maximumAge: 10000},
     );
   };
 
@@ -81,7 +84,7 @@ const BookingScreen = ({ route, navigation }: any) => {
 
     try {
       const result = await dispatch(createBooking(bookingData)).unwrap();
-      navigation.navigate('Bidding', { bookingId: result.id });
+      navigation.navigate('Bidding', {bookingId: result.id});
     } catch (error: any) {
       Alert.alert('Error', error);
     }
@@ -97,8 +100,7 @@ const BookingScreen = ({ route, navigation }: any) => {
             longitude: currentLocation.longitude,
             latitudeDelta: 0.05,
             longitudeDelta: 0.05,
-          }}
-        >
+          }}>
           {pickupCoords.latitude !== 0 && (
             <Marker coordinate={pickupCoords} pinColor="green" title="Pickup" />
           )}
@@ -110,7 +112,12 @@ const BookingScreen = ({ route, navigation }: any) => {
 
       <View className="p-6">
         <Text className="text-2xl font-bold text-gray-900 mb-4">
-          Book {serviceType === 'RIDE' ? 'a Ride' : serviceType === 'ERRAND' ? 'an Errand' : 'Parcel Delivery'}
+          Book{' '}
+          {serviceType === 'RIDE'
+            ? 'a Ride'
+            : serviceType === 'ERRAND'
+            ? 'an Errand'
+            : 'Parcel Delivery'}
         </Text>
 
         <TextInput
@@ -187,12 +194,13 @@ const BookingScreen = ({ route, navigation }: any) => {
         <TouchableOpacity
           className="bg-blue-600 rounded-lg py-4 items-center mt-4"
           onPress={handleCreateBooking}
-          disabled={loading}
-        >
+          disabled={loading}>
           {loading ? (
             <ActivityIndicator color="white" />
           ) : (
-            <Text className="text-white font-semibold text-base">Find Riders</Text>
+            <Text className="text-white font-semibold text-base">
+              Find Riders
+            </Text>
           )}
         </TouchableOpacity>
       </View>

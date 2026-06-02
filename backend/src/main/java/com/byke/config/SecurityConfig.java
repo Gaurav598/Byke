@@ -40,6 +40,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/complaints/**").hasAnyRole("USER", "RIDER", "ADMIN")
                 .requestMatchers("/api/payments/**").hasAnyRole("USER", "RIDER", "ADMIN")
                 .requestMatchers("/api/notifications/**").hasAnyRole("USER", "RIDER", "ADMIN")
+                .requestMatchers("/api/chat/**").hasAnyRole("USER", "RIDER", "ADMIN")
                 .requestMatchers("/api/upload/**").authenticated()
                 .anyRequest().authenticated()
             )

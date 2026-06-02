@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import {
   View,
   Text,
@@ -9,11 +9,11 @@ import {
   ActivityIndicator,
   SafeAreaView,
 } from 'react-native';
-import { ArrowLeft } from 'lucide-react-native';
+import {ArrowLeft} from 'lucide-react-native';
 import api from '../config/api';
 
-const OTPEntryScreen = ({ route, navigation }: any) => {
-  const { bookingId } = route.params;
+const OTPEntryScreen = ({route, navigation}: any) => {
+  const {bookingId} = route.params;
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -26,17 +26,20 @@ const OTPEntryScreen = ({ route, navigation }: any) => {
     setLoading(true);
     try {
       await api.post(`/bookings/${bookingId}/verify-otp`, null, {
-        params: { otp }
+        params: {otp},
       });
 
       Alert.alert('Success', 'Ride started! Navigate to destination.', [
         {
           text: 'OK',
-          onPress: () => navigation.replace('RideTracking', { bookingId })
-        }
+          onPress: () => navigation.replace('RideTracking', {bookingId}),
+        },
       ]);
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'Invalid OTP. Please try again.');
+      Alert.alert(
+        'Error',
+        error.response?.data?.message || 'Invalid OTP. Please try again.',
+      );
     } finally {
       setLoading(false);
     }
@@ -45,7 +48,9 @@ const OTPEntryScreen = ({ route, navigation }: any) => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}>
           <ArrowLeft size={24} color="black" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Enter OTP</Text>
@@ -65,7 +70,9 @@ const OTPEntryScreen = ({ route, navigation }: any) => {
           <TextInput
             style={styles.otpInput}
             value={otp}
-            onChangeText={(text) => setOtp(text.replace(/[^0-9]/g, '').slice(0, 4))}
+            onChangeText={text =>
+              setOtp(text.replace(/[^0-9]/g, '').slice(0, 4))
+            }
             keyboardType="number-pad"
             maxLength={4}
             placeholder="0000"
@@ -75,10 +82,12 @@ const OTPEntryScreen = ({ route, navigation }: any) => {
         </View>
 
         <TouchableOpacity
-          style={[styles.verifyBtn, (!otp || otp.length !== 4) && styles.verifyBtnDisabled]}
+          style={[
+            styles.verifyBtn,
+            (!otp || otp.length !== 4) && styles.verifyBtnDisabled,
+          ]}
           onPress={handleVerifyOTP}
-          disabled={loading || !otp || otp.length !== 4}
-        >
+          disabled={loading || !otp || otp.length !== 4}>
           {loading ? (
             <ActivityIndicator color="white" />
           ) : (

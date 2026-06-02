@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { GOOGLE_PLACES_API_KEY } from '../config/env';
+import {GOOGLE_PLACES_API_KEY} from '../config/env';
 
 export interface PlaceResult {
   id: string;
@@ -13,7 +13,7 @@ export interface PlaceResult {
 
 export const searchPlaces = async (
   query: string,
-  location?: { latitude: number; longitude: number }
+  location?: {latitude: number; longitude: number},
 ): Promise<PlaceResult[]> => {
   try {
     const params: any = {
@@ -29,7 +29,7 @@ export const searchPlaces = async (
 
     const response = await axios.get(
       'https://maps.googleapis.com/maps/api/place/autocomplete/json',
-      { params }
+      {params, timeout: 8000},
     );
 
     if (response.data.status === 'OK') {
@@ -43,7 +43,7 @@ export const searchPlaces = async (
             latitude: details?.latitude || 0,
             longitude: details?.longitude || 0,
           };
-        })
+        }),
       );
       return detailedPlaces.filter(p => p.latitude !== 0);
     }
@@ -56,8 +56,8 @@ export const searchPlaces = async (
 };
 
 export const getPlaceDetails = async (
-  placeId: string
-): Promise<{ latitude: number; longitude: number } | null> => {
+  placeId: string,
+): Promise<{latitude: number; longitude: number} | null> => {
   try {
     const response = await axios.get(
       'https://maps.googleapis.com/maps/api/place/details/json',
@@ -67,7 +67,8 @@ export const getPlaceDetails = async (
           fields: 'geometry',
           key: GOOGLE_PLACES_API_KEY,
         },
-      }
+        timeout: 8000,
+      },
     );
 
     if (response.data.status === 'OK') {
@@ -87,7 +88,7 @@ export const getPlaceDetails = async (
 
 export const reverseGeocode = async (
   latitude: number,
-  longitude: number
+  longitude: number,
 ): Promise<string> => {
   try {
     const response = await axios.get(
@@ -97,7 +98,8 @@ export const reverseGeocode = async (
           latlng: `${latitude},${longitude}`,
           key: GOOGLE_PLACES_API_KEY,
         },
-      }
+        timeout: 8000,
+      },
     );
 
     if (response.data.status === 'OK' && response.data.results.length > 0) {
@@ -114,7 +116,7 @@ export const reverseGeocode = async (
 export const getNearbyPlaces = async (
   latitude: number,
   longitude: number,
-  radius: number = 5000
+  radius: number = 5000,
 ): Promise<PlaceResult[]> => {
   try {
     const response = await axios.get(
@@ -126,7 +128,8 @@ export const getNearbyPlaces = async (
           type: 'point_of_interest',
           key: GOOGLE_PLACES_API_KEY,
         },
-      }
+        timeout: 8000,
+      },
     );
 
     if (response.data.status === 'OK') {

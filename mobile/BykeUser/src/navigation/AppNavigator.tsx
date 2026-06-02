@@ -1,11 +1,18 @@
-import React, { useEffect } from 'react';
-import { useSelector } from 'react-redux';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { RootState } from '../store';
-import { NotificationProvider, useNotification } from '../context/NotificationContext';
-import { setupNotificationListeners } from '../services/notificationService';
+import React, {useEffect} from 'react';
+import {useSelector} from 'react-redux';
+import {
+  NavigationContainer,
+  createNavigationContainerRef,
+} from '@react-navigation/native';
+import {createNativeStackNavigator} from '@react-navigation/native-stack';
+import {RootState} from '../store';
+import {
+  NotificationProvider,
+  useNotification,
+} from '../context/NotificationContext';
+import {setupNotificationListeners} from '../services/notificationService';
 import PopupNotifications from '../components/PopupNotifications';
+import api from '../config/api';
 
 import LoginScreen from '../features/auth/screens/LoginScreen';
 import RegisterScreen from '../features/auth/screens/RegisterScreen';
@@ -25,37 +32,94 @@ import RiderApproachingScreen from '../screens/RiderApproachingScreen';
 import RatingScreen from '../screens/RatingScreen';
 
 const Stack = createNativeStackNavigator();
+const navigationRef = createNavigationContainerRef<any>();
+
+const routeUserByBooking = async (bookingId: string) => {
+  if (!bookingId || !navigationRef.isReady()) {
+    return;
+  }
+
+  try {
+    const response = await api.get(`/bookings/${bookingId}`);
+    const booking = response.data;
+    const status = String(booking?.status || '').toUpperCase();
+
+    if (status === 'RIDER_ARRIVED') {
+      navigationRef.navigate('RiderApproaching', {bookingId: Number(bookingId)});
+      return;
+    }
+    if (status === 'IN_PROGRESS') {
+      navigationRef.navigate('ActiveBooking', {bookingId: Number(bookingId)});
+      return;
+    }
+    if (status === 'COMPLETED') {
+      navigationRef.navigate('RatingScreen', {bookingId: Number(bookingId)});
+      return;
+    }
+    if (status === 'ACCEPTED' || status === 'RIDER_EN_ROUTE') {
+      navigationRef.navigate('UserTracking', {rideId: String(bookingId)});
+      return;
+    }
+
+    navigationRef.navigate('UserBids', {rideId: String(bookingId)});
+  } catch {
+    navigationRef.navigate('UserHome');
+  }
+};
+
+const handleUserNotificationOpen = async (remoteMessage: any) => {
+  const data = remoteMessage?.data || {};
+  const bookingId = String(data.bookingId || '').trim();
+  const type = String(data.type || '').toUpperCase();
+
+  if (!navigationRef.isReady()) {
+    return;
+  }
+
+  if (bookingId) {
+    if (type === 'RATE_RIDER') {
+      navigationRef.navigate('RatingScreen', {bookingId: Number(bookingId)});
+      return;
+    }
+    await routeUserByBooking(bookingId);
+    return;
+  }
+
+  navigationRef.navigate('Notifications');
+};
 
 const NavigationContent = () => {
-  const { showNotification } = useNotification();
+  const {showNotification} = useNotification();
 
   useEffect(() => {
-    // Setup notification polling listeners
     const unsubscribe = setupNotificationListeners(
-      (remoteMessage) => {
-        // Show popup notification when app is in foreground
+      remoteMessage => {
         showNotification({
           title: remoteMessage.notification?.title || 'New Notification',
           body: remoteMessage.notification?.body || '',
           type: 'info',
           data: remoteMessage.data,
+          onPress: () => {
+            handleUserNotificationOpen(remoteMessage);
+          },
         });
       },
-      (remoteMessage) => {
-        // Handle notification opened app
-        console.log('Notification opened app:', remoteMessage);
-      }
+      remoteMessage => {
+        handleUserNotificationOpen(remoteMessage);
+      },
     );
 
     return () => unsubscribe();
   }, [showNotification]);
 
-  const { isAuthenticated, needsRegistration } = useSelector((state: RootState) => state.auth);
+  const {isAuthenticated, needsRegistration} = useSelector(
+    (state: RootState) => state.auth,
+  );
 
   return (
     <>
       <PopupNotifications />
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator screenOptions={{headerShown: false}}>
         {!isAuthenticated && !needsRegistration ? (
           <Stack.Screen name="Login" component={LoginScreen} />
         ) : needsRegistration ? (
@@ -71,12 +135,35 @@ const NavigationContent = () => {
             <Stack.Screen name="Chat" component={ChatScreen} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
             <Stack.Screen name="MyBookings" component={MyBookingsScreen} />
-            <Stack.Screen name="Notifications" component={NotificationsScreen} />
-            <Stack.Screen name="Booking" component={BookingScreen} options={{ headerShown: true, title: 'Book Service' }} />
-            <Stack.Screen name="BidSelection" component={BidSelectionScreen} options={{ headerShown: true, title: 'Select Rider' }} />
-            <Stack.Screen name="ActiveBooking" component={ActiveBookingScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="RiderApproaching" component={RiderApproachingScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="RatingScreen" component={RatingScreen} options={{ headerShown: false }} />
+            <Stack.Screen
+              name="Notifications"
+              component={NotificationsScreen}
+            />
+            <Stack.Screen
+              name="Booking"
+              component={BookingScreen}
+              options={{headerShown: true, title: 'Book Service'}}
+            />
+            <Stack.Screen
+              name="BidSelection"
+              component={BidSelectionScreen}
+              options={{headerShown: true, title: 'Select Rider'}}
+            />
+            <Stack.Screen
+              name="ActiveBooking"
+              component={ActiveBookingScreen}
+              options={{headerShown: false}}
+            />
+            <Stack.Screen
+              name="RiderApproaching"
+              component={RiderApproachingScreen}
+              options={{headerShown: false}}
+            />
+            <Stack.Screen
+              name="RatingScreen"
+              component={RatingScreen}
+              options={{headerShown: false}}
+            />
           </>
         )}
       </Stack.Navigator>
@@ -86,7 +173,7 @@ const NavigationContent = () => {
 
 const AppNavigator = () => {
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <NotificationProvider>
         <NavigationContent />
       </NotificationProvider>

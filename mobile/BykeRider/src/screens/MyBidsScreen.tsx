@@ -1,36 +1,52 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  FlatList, 
-  RefreshControl, 
-  SafeAreaView, 
-  ActivityIndicator, 
+import React, {useState, useEffect} from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  FlatList,
+  RefreshControl,
+  SafeAreaView,
   StyleSheet,
-  Dimensions 
 } from 'react-native';
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState, AppDispatch } from '../store';
 import api from '../config/api';
-import { 
-  Clock, MapPin, ChevronRight, ArrowLeft, 
-  Bike, ShoppingBag, Package, AlertCircle,
-  CheckCircle2, XCircle, Timer
+import {
+  Clock,
+  ChevronRight,
+  ArrowLeft,
+  Bike,
+  ShoppingBag,
+  Package,
+  AlertCircle,
+  CheckCircle2,
+  XCircle,
+  Timer,
 } from 'lucide-react-native';
 
-const { width } = Dimensions.get('window');
-
-const MyBidsScreen = ({ navigation }: any) => {
-  const dispatch = useDispatch<AppDispatch>();
+const MyBidsScreen = ({navigation}: any) => {
   const [bids, setBids] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [activeBookingId, setActiveBookingId] = useState<string | null>(null);
 
   const fetchMyBids = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/rider/my-bids');
-      setBids(response.data);
+      const [bidsResponse, activeResponse] = await Promise.allSettled([
+        api.get('/rider/my-bids'),
+        api.get('/bookings/rider/active'),
+      ]);
+
+      if (bidsResponse.status === 'fulfilled') {
+        setBids(bidsResponse.value.data);
+      }
+
+      if (
+        activeResponse.status === 'fulfilled' &&
+        activeResponse.value?.data?.id
+      ) {
+        setActiveBookingId(String(activeResponse.value.data.id));
+      } else {
+        setActiveBookingId(null);
+      }
     } catch (error) {
       console.log('Error fetching bids:', error);
     } finally {
@@ -44,43 +60,65 @@ const MyBidsScreen = ({ navigation }: any) => {
 
   const getServiceInfo = (type: string) => {
     switch (type?.toLowerCase()) {
-      case 'ride': return { icon: Bike, color: '#EAB308', label: 'Ride' };
-      case 'errand': return { icon: ShoppingBag, color: '#10B981', label: 'Errand' };
-      case 'parcel': return { icon: Package, color: '#3B82F6', label: 'Parcel' };
-      default: return { icon: Bike, color: '#6B7280', label: type || 'Ride' };
+      case 'ride':
+        return {icon: Bike, color: '#EAB308', label: 'Ride'};
+      case 'errand':
+        return {icon: ShoppingBag, color: '#10B981', label: 'Errand'};
+      case 'parcel':
+        return {icon: Package, color: '#3B82F6', label: 'Parcel'};
+      default:
+        return {icon: Bike, color: '#6B7280', label: type || 'Ride'};
     }
   };
 
   const getStatusInfo = (status: string) => {
     switch (status) {
       case 'ACCEPTED':
-        return { color: '#10B981', bg: '#D1FAE5', icon: CheckCircle2, text: 'Accepted' };
+        return {
+          color: '#10B981',
+          bg: '#D1FAE5',
+          icon: CheckCircle2,
+          text: 'Accepted',
+        };
       case 'REJECTED':
-        return { color: '#EF4444', bg: '#FEE2E2', icon: XCircle, text: 'Rejected' };
+        return {
+          color: '#EF4444',
+          bg: '#FEE2E2',
+          icon: XCircle,
+          text: 'Rejected',
+        };
       case 'EXPIRED':
-        return { color: '#6B7280', bg: '#F3F4F6', icon: Clock, text: 'Expired' };
+        return {color: '#6B7280', bg: '#F3F4F6', icon: Clock, text: 'Expired'};
       default:
-        return { color: '#3B82F6', bg: '#DBEAFE', icon: Timer, text: 'Pending' };
+        return {color: '#3B82F6', bg: '#DBEAFE', icon: Timer, text: 'Pending'};
     }
   };
 
-  const renderBid = ({ item }: any) => {
+  const renderBid = ({item}: any) => {
     const service = getServiceInfo(item.booking?.serviceType);
     const status = getStatusInfo(item.status);
-    
+
     return (
       <TouchableOpacity
         activeOpacity={0.8}
         style={styles.bidCard}
         onPress={() => {
-          if (item.status === 'ACCEPTED') {
-            navigation.navigate('RideTracking', { bookingId: item.booking.id });
+          const isActiveAccepted =
+            item.status === 'ACCEPTED' &&
+            (!activeBookingId || String(item.booking?.id) === activeBookingId);
+          if (isActiveAccepted) {
+            navigation.navigate('RideTracking', {bookingId: item.booking.id});
+          } else if (item.status === 'ACCEPTED') {
+            alert('Complete your current active ride before opening another accepted offer.');
           }
-        }}
-      >
+        }}>
         <View style={styles.cardHeader}>
           <View style={styles.headerLeft}>
-            <View style={[styles.iconContainer, { backgroundColor: `${service.color}15` }]}>
+            <View
+              style={[
+                styles.iconContainer,
+                {backgroundColor: `${service.color}15`},
+              ]}>
               <service.icon size={20} color={service.color} strokeWidth={2.5} />
             </View>
             <View>
@@ -88,22 +126,24 @@ const MyBidsScreen = ({ navigation }: any) => {
               <Text style={styles.bidAmount}>₹{item.bidAmount}</Text>
             </View>
           </View>
-          <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
+          <View style={[styles.statusBadge, {backgroundColor: status.bg}]}>
             <status.icon size={12} color={status.color} strokeWidth={3} />
-            <Text style={[styles.statusText, { color: status.color }]}>{status.text}</Text>
+            <Text style={[styles.statusText, {color: status.color}]}>
+              {status.text}
+            </Text>
           </View>
         </View>
 
         <View style={styles.locationContainer}>
           <View style={styles.locationRow}>
-            <View style={[styles.dot, { backgroundColor: '#10B981' }]} />
+            <View style={[styles.dot, {backgroundColor: '#10B981'}]} />
             <Text style={styles.locationText} numberOfLines={1}>
               {item.booking?.pickupAddress || 'Pickup Location'}
             </Text>
           </View>
           <View style={styles.line} />
           <View style={styles.locationRow}>
-            <View style={[styles.dot, { backgroundColor: '#EF4444' }]} />
+            <View style={[styles.dot, {backgroundColor: '#EF4444'}]} />
             <Text style={styles.locationText} numberOfLines={1}>
               {item.booking?.dropAddress || 'Drop Location'}
             </Text>
@@ -114,12 +154,20 @@ const MyBidsScreen = ({ navigation }: any) => {
           <View style={styles.timeContainer}>
             <Clock size={12} color="#9CA3AF" />
             <Text style={styles.timeText}>
-              Placed {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              Placed{' '}
+              {new Date(item.createdAt).toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
             </Text>
           </View>
           {item.status === 'ACCEPTED' && (
             <View style={styles.actionPrompt}>
-              <Text style={styles.actionText}>Start Ride</Text>
+              <Text style={styles.actionText}>
+                {activeBookingId && String(item.booking?.id) !== activeBookingId
+                  ? 'Locked'
+                  : 'Start Ride'}
+              </Text>
               <ChevronRight size={16} color="#10B981" strokeWidth={3} />
             </View>
           )}
@@ -131,10 +179,9 @@ const MyBidsScreen = ({ navigation }: any) => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => navigation.goBack()}
-          style={styles.backBtn}
-        >
+          style={styles.backBtn}>
           <ArrowLeft size={24} color="black" strokeWidth={2.5} />
         </TouchableOpacity>
         <View>
@@ -148,7 +195,11 @@ const MyBidsScreen = ({ navigation }: any) => {
         renderItem={renderBid}
         keyExtractor={(item: any) => item.id.toString()}
         refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={fetchMyBids} tintColor="#000" />
+          <RefreshControl
+            refreshing={loading}
+            onRefresh={fetchMyBids}
+            tintColor="#000"
+          />
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
@@ -157,12 +208,12 @@ const MyBidsScreen = ({ navigation }: any) => {
             </View>
             <Text style={styles.emptyTitle}>No active bids</Text>
             <Text style={styles.emptySubtitle}>
-              You haven't placed any bids yet. Check "New Requests" to find work near you.
+              You haven't placed any bids yet. Check "New Requests" to find work
+              near you.
             </Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => navigation.navigate('AvailableBookings')}
-              style={styles.browseBtn}
-            >
+              style={styles.browseBtn}>
               <Text style={styles.browseBtnText}>Browse Requests</Text>
             </TouchableOpacity>
           </View>
@@ -219,7 +270,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#F3F4F6',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 3,
@@ -357,7 +408,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 4,

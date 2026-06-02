@@ -42,6 +42,16 @@ public class BiddingService {
     public Bid placeBid(Long bookingId, Long riderId, Double bidAmount) {
         Booking booking = bookingService.getBookingById(bookingId);
         Rider rider = riderService.getRiderById(riderId);
+        List<BookingStatus> activeStatuses = List.of(
+                BookingStatus.ACCEPTED,
+                BookingStatus.RIDER_EN_ROUTE,
+                BookingStatus.RIDER_ARRIVED,
+                BookingStatus.IN_PROGRESS
+        );
+        boolean hasActiveRide = !bookingRepository.findByRiderIdAndStatusIn(riderId, activeStatuses).isEmpty();
+        if (hasActiveRide) {
+            throw new RuntimeException("You already have an active ride. Complete it before placing new bids.");
+        }
 
         // Max bid limit: Rider's bid can be at most ₹80 more than the user's entered amount
         Double userAmount = booking.getUserEnteredAmount() != null ? booking.getUserEnteredAmount() : booking.getEstimatedFare();
@@ -91,6 +101,19 @@ public class BiddingService {
     public Booking acceptBid(Long bidId) {
         Bid bid = bidRepository.findById(bidId)
                 .orElseThrow(() -> new RuntimeException("Bid not found"));
+        List<BookingStatus> activeStatuses = List.of(
+                BookingStatus.ACCEPTED,
+                BookingStatus.RIDER_EN_ROUTE,
+                BookingStatus.RIDER_ARRIVED,
+                BookingStatus.IN_PROGRESS
+        );
+        boolean hasActiveRide = bookingRepository
+                .findByRiderIdAndStatusIn(bid.getRider().getId(), activeStatuses)
+                .stream()
+                .anyMatch(b -> !b.getId().equals(bid.getBooking().getId()));
+        if (hasActiveRide) {
+            throw new RuntimeException("Rider already has an active ride. Cannot accept another booking.");
+        }
 
         bid.setStatus(BidStatus.ACCEPTED);
         bidRepository.save(bid);
@@ -102,8 +125,13 @@ public class BiddingService {
             if (!otherBid.getId().equals(bidId)) {
                 otherBid.setStatus(BidStatus.REJECTED);
                 bidRepository.save(otherBid);
-                notificationService.notifyRider(otherBid.getRider().getId(), 
-                        "Bid Not Selected", "Another rider was selected for this booking");
+                notificationService.notifyRiderWithType(
+                        otherBid.getRider().getId(),
+                        "Bid Not Selected",
+                        "Another rider was selected for this booking",
+                        "BID_REJECTED",
+                        bid.getBooking().getId()
+                );
             }
         }
 
@@ -116,12 +144,22 @@ public class BiddingService {
         bookingRepository.save(booking);
 
         // Notify rider that bid was accepted (without OTP - rider must ask user for OTP)
-        notificationService.notifyRider(bid.getRider().getId(),
-                "Bid Accepted!", "User accepted your bid. Navigate to pickup location.");
+        notificationService.notifyRiderWithType(
+                bid.getRider().getId(),
+                "Bid Accepted!",
+                "User accepted your bid. Navigate to pickup location.",
+                "RIDE_ACCEPTED",
+                booking.getId()
+        );
         
         // Notify user with OTP
-        notificationService.notifyUser(booking.getUser().getId(),
-                "Rider Assigned!", "Your OTP is: " + otp + ". Share this with your rider when they arrive.");
+        notificationService.notifyUserWithType(
+                booking.getUser().getId(),
+                "Rider Assigned!",
+                "Your OTP is: " + otp + ". Share this with your rider when they arrive.",
+                "OTP_READY",
+                booking.getId()
+        );
 
         log.info("Bid {} accepted for booking {}. OTP generated: {}", bidId, bid.getBooking().getId(), otp);
         return booking;
@@ -184,9 +222,13 @@ public class BiddingService {
         }
 
         for (Rider rider : nearbyRiders) {
-            notificationService.notifyRider(rider.getId(), 
-                    "New Booking Available", 
-                    "New " + booking.getServiceType() + " booking nearby. Tap to bid!");
+            notificationService.notifyRiderWithType(
+                    rider.getId(),
+                    "New Booking Available",
+                    "New " + booking.getServiceType() + " booking nearby. Tap to bid!",
+                    "NEW_BOOKING",
+                    booking.getId()
+            );
             
             messagingTemplate.convertAndSend("/topic/rider/" + rider.getId() + "/bookings", booking);
         }

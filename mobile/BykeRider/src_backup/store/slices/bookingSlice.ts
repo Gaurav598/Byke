@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import {createSlice, createAsyncThunk, PayloadAction} from '@reduxjs/toolkit';
 import api from '../../config/api';
 
 interface BookingState {
@@ -19,81 +19,100 @@ const initialState: BookingState = {
 
 export const createBooking = createAsyncThunk(
   'booking/create',
-  async (bookingData: any, { rejectWithValue }) => {
+  async (bookingData: any, {rejectWithValue}) => {
     try {
       const response = await api.post('/bookings', bookingData);
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to create booking');
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to create booking',
+      );
     }
-  }
+  },
 );
 
 export const fetchMyBookings = createAsyncThunk(
   'booking/fetchMy',
-  async (_, { rejectWithValue }) => {
+  async (_, {rejectWithValue}) => {
     try {
       const response = await api.get('/bookings/user/my-bookings');
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to fetch bookings');
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to fetch bookings',
+      );
     }
-  }
+  },
 );
 
 export const fetchBookingBids = createAsyncThunk(
   'booking/fetchBids',
-  async (bookingId: number, { rejectWithValue }) => {
+  async (bookingId: number, {rejectWithValue}) => {
     try {
       const response = await api.get(`/bids/booking/${bookingId}`);
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to fetch bids');
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to fetch bids',
+      );
     }
-  }
+  },
 );
 
 export const acceptBid = createAsyncThunk(
   'booking/acceptBid',
-  async (bidId: number, { rejectWithValue }) => {
+  async (bidId: number, {rejectWithValue}) => {
     try {
       const response = await api.post(`/bids/${bidId}/accept`);
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to accept bid');
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to accept bid',
+      );
     }
-  }
+  },
 );
 
 export const cancelBooking = createAsyncThunk(
   'booking/cancel',
-  async ({ bookingId, reason }: { bookingId: number; reason: string }, { rejectWithValue }) => {
+  async (
+    {bookingId, reason}: {bookingId: number; reason: string},
+    {rejectWithValue},
+  ) => {
     try {
       const response = await api.post(`/bookings/${bookingId}/cancel`, null, {
-        params: { reason, byUser: true },
+        params: {reason, byUser: true},
       });
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to cancel booking');
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to cancel booking',
+      );
     }
-  }
+  },
 );
 
 export const rateBooking = createAsyncThunk(
   'booking/rate',
   async (
-    { bookingId, rating, review }: { bookingId: number; rating: number; review?: string },
-    { rejectWithValue }
+    {
+      bookingId,
+      rating,
+      review,
+    }: {bookingId: number; rating: number; review?: string},
+    {rejectWithValue},
   ) => {
     try {
       const response = await api.post(`/bookings/${bookingId}/rate`, null, {
-        params: { userRating: rating, userReview: review },
+        params: {userRating: rating, userReview: review},
       });
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to rate booking');
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to rate booking',
+      );
     }
-  }
+  },
 );
 
 const bookingSlice = createSlice({
@@ -106,16 +125,16 @@ const bookingSlice = createSlice({
     addBid: (state, action: PayloadAction<any>) => {
       state.bids.push(action.payload);
     },
-    clearBids: (state) => {
+    clearBids: state => {
       state.bids = [];
     },
-    clearError: (state) => {
+    clearError: state => {
       state.error = null;
     },
   },
-  extraReducers: (builder) => {
+  extraReducers: builder => {
     builder
-      .addCase(createBooking.pending, (state) => {
+      .addCase(createBooking.pending, state => {
         state.loading = true;
         state.error = null;
       })
@@ -133,14 +152,15 @@ const bookingSlice = createSlice({
       .addCase(fetchBookingBids.fulfilled, (state, action) => {
         state.bids = action.payload;
       })
-      .addCase(acceptBid.fulfilled, (state) => {
+      .addCase(acceptBid.fulfilled, state => {
         state.bids = [];
       })
-      .addCase(cancelBooking.fulfilled, (state) => {
+      .addCase(cancelBooking.fulfilled, state => {
         state.currentBooking = null;
       });
   },
 });
 
-export const { setCurrentBooking, addBid, clearBids, clearError } = bookingSlice.actions;
+export const {setCurrentBooking, addBid, clearBids, clearError} =
+  bookingSlice.actions;
 export default bookingSlice.reducer;

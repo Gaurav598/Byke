@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, {useState, useEffect, useRef, useCallback} from 'react';
 import {
   View,
   Text,
@@ -6,22 +6,33 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
-  Dimensions,
+  useWindowDimensions,
   Platform,
   Linking,
+  ScrollView,
 } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, {Marker, PROVIDER_GOOGLE} from 'react-native-maps';
 import MapViewDirections from 'react-native-maps-directions';
-import Geolocation from 'react-native-geolocation-service';
-import { useRoute, useNavigation } from '@react-navigation/native';
+import {useRoute, useNavigation} from '@react-navigation/native';
 import api from '../config/api';
-import { GOOGLE_PLACES_API_KEY } from '../config/env';
-import { 
-  Navigation, Phone, CheckCircle, MapPin, 
-  Clock, DollarSign, User, AlertCircle 
+import {GOOGLE_PLACES_API_KEY} from '../config/env';
+import {
+  clearLocationWatch,
+  watchLocation,
+  requestLocationPermission,
+  getCurrentLocation,
+} from '../services/locationService';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {
+  Navigation,
+  Phone,
+  MessageCircle,
+  CheckCircle,
+  MapPin,
+  DollarSign,
+  User,
+  AlertCircle,
 } from 'lucide-react-native';
-
-const { width, height } = Dimensions.get('window');
 
 interface Booking {
   id: number;
@@ -42,69 +53,129 @@ interface Booking {
 }
 
 const RideTrackingScreen = () => {
+  const {height: windowHeight} = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const route = useRoute();
   const navigation = useNavigation();
-  const params = route.params as { bookingId?: number; booking?: Booking };
+  const params = (route.params || {}) as {bookingId?: number; booking?: Booking};
   const resolvedBookingId = params.bookingId ?? params.booking?.id;
 
   const mapRef = useRef<MapView>(null);
-  const [booking, setBooking] = useState<Booking | null>(params.booking || null);
+  const watchIdRef = useRef<number | null>(null);
+  const [booking, setBooking] = useState<Booking | null>(
+    params.booking || null,
+  );
   const [currentLocation, setCurrentLocation] = useState({
     latitude: 28.6139,
-    longitude: 77.2090,
+    longitude: 77.209,
   });
   const [otp, setOtp] = useState('');
-  const [rideStatus, setRideStatus] = useState<'ACCEPTED' | 'RIDER_ARRIVED' | 'IN_PROGRESS' | 'COMPLETED'>('ACCEPTED');
+  const [rideStatus, setRideStatus] = useState<
+    'ACCEPTED' | 'RIDER_EN_ROUTE' | 'RIDER_ARRIVED' | 'IN_PROGRESS' | 'COMPLETED'
+  >('ACCEPTED');
   const [loading, setLoading] = useState(false);
 
+  const asCoordinate = (value: unknown, fallback: number) => {
+    const num = Number(value);
+    return Number.isFinite(num) ? num : fallback;
+  };
+  const hasValidCoordinate = (value: unknown) => {
+    const num = Number(value);
+    return Number.isFinite(num) && Math.abs(num) <= 180;
+  };
+
+  const fetchBookingDetails = useCallback(async () => {
+    if (!resolvedBookingId) {
+      return;
+    }
+    try {
+      const response = await api.get(`/bookings/${resolvedBookingId}`);
+      setBooking(response.data);
+      const nextStatus = String(response.data?.status || 'ACCEPTED') as
+        | 'ACCEPTED'
+        | 'RIDER_EN_ROUTE'
+        | 'RIDER_ARRIVED'
+        | 'IN_PROGRESS'
+        | 'COMPLETED';
+      setRideStatus(nextStatus);
+    } catch (error) {
+      console.log('Error fetching booking:', error);
+    }
+  }, [resolvedBookingId]);
+
   useEffect(() => {
+    if (!resolvedBookingId && !params.booking) {
+      Alert.alert('Ride not found', 'Unable to load ride details.', [
+        {text: 'OK', onPress: () => (navigation as any).replace('Home')},
+      ]);
+      return;
+    }
     fetchBookingDetails();
     startLocationTracking();
     const interval = setInterval(fetchBookingDetails, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    return () => {
+      clearInterval(interval);
+      if (watchIdRef.current !== null) {
+        clearLocationWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+    };
+  }, [fetchBookingDetails]);
 
   const handleOpenNavigation = () => {
-    const dest = rideStatus === 'IN_PROGRESS'
-      ? { lat: booking?.dropLatitude, lng: booking?.dropLongitude, label: booking?.dropAddress }
-      : { lat: booking?.pickupLatitude, lng: booking?.pickupLongitude, label: booking?.pickupAddress };
-    if (!dest.lat || !dest.lng) return;
-    const url = Platform.OS === 'ios'
-      ? `maps://?daddr=${dest.lat},${dest.lng}&dirflg=d`
-      : `google.navigation:q=${dest.lat},${dest.lng}&mode=d`;
+    const dest =
+      rideStatus === 'IN_PROGRESS'
+        ? {
+            lat: booking?.dropLatitude,
+            lng: booking?.dropLongitude,
+            label: booking?.dropAddress,
+          }
+        : {
+            lat: booking?.pickupLatitude,
+            lng: booking?.pickupLongitude,
+            label: booking?.pickupAddress,
+          };
+    if (!dest.lat || !dest.lng) {
+      return;
+    }
+    const url =
+      Platform.OS === 'ios'
+        ? `maps://?daddr=${dest.lat},${dest.lng}&dirflg=d`
+        : `google.navigation:q=${dest.lat},${dest.lng}&mode=d`;
     Linking.openURL(url).catch(() =>
-      Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${dest.lat},${dest.lng}&travelmode=driving`)
+      Linking.openURL(
+        `https://www.google.com/maps/dir/?api=1&destination=${dest.lat},${dest.lng}&travelmode=driving`,
+      ),
     );
   };
 
   const handleCancelRide = () => {
     if (rideStatus === 'IN_PROGRESS') {
-      Alert.alert('Cannot Cancel', 'Cannot cancel a ride that is already in progress.');
+      Alert.alert(
+        'Cannot Cancel',
+        'Cannot cancel a ride that is already in progress.',
+      );
       return;
     }
-    Alert.alert(
-      'Cancel Ride',
-      'Are you sure you want to cancel this ride?',
-      [
-        { text: 'No', style: 'cancel' },
-        {
-          text: 'Yes, Cancel',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.post(`/bookings/${resolvedBookingId}/cancel`, null, {
-                params: { reason: 'Rider cancelled', byUser: false }
-              });
-              Alert.alert('Cancelled', 'Ride cancelled.', [
-                { text: 'OK', onPress: () => (navigation as any).replace('Home') },
-              ]);
-            } catch (e) {
-              Alert.alert('Error', 'Failed to cancel ride.');
-            }
-          },
+    Alert.alert('Cancel Ride', 'Are you sure you want to cancel this ride?', [
+      {text: 'No', style: 'cancel'},
+      {
+        text: 'Yes, Cancel',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await api.post(`/bookings/${resolvedBookingId}/cancel`, null, {
+              params: {reason: 'Rider cancelled', byUser: false},
+            });
+            Alert.alert('Cancelled', 'Ride cancelled.', [
+              {text: 'OK', onPress: () => (navigation as any).replace('Home')},
+            ]);
+          } catch (e) {
+            Alert.alert('Error', 'Failed to cancel ride.');
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   useEffect(() => {
@@ -112,52 +183,87 @@ const RideTrackingScreen = () => {
       const coordinates = [
         currentLocation,
         rideStatus === 'ACCEPTED' || rideStatus === 'RIDER_ARRIVED'
-          ? { latitude: booking.pickupLatitude, longitude: booking.pickupLongitude }
-          : { latitude: booking.dropLatitude, longitude: booking.dropLongitude }
+          ? {
+              latitude: asCoordinate(
+                booking.pickupLatitude,
+                currentLocation.latitude,
+              ),
+              longitude: asCoordinate(
+                booking.pickupLongitude,
+                currentLocation.longitude,
+              ),
+            }
+          : {
+              latitude: asCoordinate(
+                booking.dropLatitude,
+                currentLocation.latitude,
+              ),
+              longitude: asCoordinate(
+                booking.dropLongitude,
+                currentLocation.longitude,
+              ),
+            },
       ];
-      
+
       mapRef.current.fitToCoordinates(coordinates, {
-        edgePadding: { top: 100, right: 50, bottom: 300, left: 50 },
+        edgePadding: {
+          top: 100,
+          right: 50,
+          bottom: Math.round(windowHeight * 0.42),
+          left: 50,
+        },
         animated: true,
       });
     }
-  }, [booking, currentLocation, rideStatus]);
+  }, [booking, currentLocation, rideStatus, windowHeight]);
 
-  const startLocationTracking = () => {
-    Geolocation.watchPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        setCurrentLocation({ latitude, longitude });
-        
-        api.patch('/rider/location', null, {
-          params: { latitude, longitude }
-        }).catch(console.log);
-      },
-      (error) => console.log('Location error:', error),
-      { enableHighAccuracy: true, distanceFilter: 10, interval: 5000 }
-    );
-  };
-
-  const fetchBookingDetails = async () => {
-    if (!resolvedBookingId) return;
-    try {
-      const response = await api.get(`/bookings/${resolvedBookingId}`);
-      setBooking(response.data);
-      setRideStatus(response.data.status);
-    } catch (error) {
-      console.log('Error fetching booking:', error);
+  const startLocationTracking = async () => {
+    if (watchIdRef.current !== null) {
+      return;
     }
+
+    const hasPermission = await requestLocationPermission();
+    if (!hasPermission) {
+      return;
+    }
+
+    try {
+      const initial = await getCurrentLocation();
+      setCurrentLocation(initial);
+      await api.patch('/rider/location', null, {
+        params: {latitude: initial.latitude, longitude: initial.longitude},
+      });
+    } catch (error) {
+      console.log('Initial location error:', error);
+    }
+
+    watchIdRef.current = watchLocation(
+      ({latitude, longitude}) => {
+        setCurrentLocation({latitude, longitude});
+        api
+          .patch('/rider/location', null, {
+            params: {latitude, longitude},
+          })
+          .catch(console.log);
+      },
+      error => console.log('Location error:', error),
+    );
   };
 
   const handleArrived = async () => {
     try {
       setLoading(true);
-      const response = await api.post(`/bookings/${resolvedBookingId}/rider-reached`);
+      const response = await api.post(
+        `/bookings/${resolvedBookingId}/rider-reached`,
+      );
       setRideStatus('RIDER_ARRIVED');
       setBooking(response.data);
       Alert.alert('Success', 'User has been notified. OTP generated.');
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'Failed to mark arrival');
+      Alert.alert(
+        'Error',
+        error.response?.data?.message || 'Failed to mark arrival',
+      );
     } finally {
       setLoading(false);
     }
@@ -171,44 +277,50 @@ const RideTrackingScreen = () => {
 
     try {
       setLoading(true);
-      const response = await api.post(`/bookings/${resolvedBookingId}/verify-otp`, null, {
-        params: { otp }
-      });
+      const response = await api.post(
+        `/bookings/${resolvedBookingId}/verify-otp`,
+        null,
+        {
+          params: {otp},
+        },
+      );
       setRideStatus('IN_PROGRESS');
       setBooking(response.data);
       setOtp('');
       Alert.alert('Ride Started', 'Navigate to drop location');
     } catch (error: any) {
-      Alert.alert('Invalid OTP', error.response?.data?.message || 'Please check the OTP and try again');
+      Alert.alert(
+        'Invalid OTP',
+        error.response?.data?.message || 'Please check the OTP and try again',
+      );
     } finally {
       setLoading(false);
     }
   };
 
   const handleCompleteRide = async () => {
-    Alert.alert(
-      'Complete Ride',
-      'Have you reached the drop location?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Complete',
-          onPress: async () => {
-            try {
-              setLoading(true);
-              await api.post(`/bookings/${resolvedBookingId}/complete`);
-              Alert.alert('Success', 'Ride completed successfully!', [
-                { text: 'OK', onPress: () => (navigation as any).replace('Home') }
-              ]);
-            } catch (error: any) {
-              Alert.alert('Error', error.response?.data?.message || 'Failed to complete ride');
-            } finally {
-              setLoading(false);
-            }
+    Alert.alert('Complete Ride', 'Have you reached the drop location?', [
+      {text: 'Cancel', style: 'cancel'},
+      {
+        text: 'Complete',
+        onPress: async () => {
+          try {
+            setLoading(true);
+            await api.post(`/bookings/${resolvedBookingId}/complete`);
+            Alert.alert('Success', 'Ride completed successfully!', [
+              {text: 'OK', onPress: () => (navigation as any).replace('Home')},
+            ]);
+          } catch (error: any) {
+            Alert.alert(
+              'Error',
+              error.response?.data?.message || 'Failed to complete ride',
+            );
+          } finally {
+            setLoading(false);
           }
-        }
-      ]
-    );
+        },
+      },
+    ]);
   };
 
   const handleCallUser = () => {
@@ -220,14 +332,34 @@ const RideTrackingScreen = () => {
   if (!booking) {
     return (
       <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading booking details...</Text>
+        <Text style={styles.loadingText}>
+          {resolvedBookingId ? 'Loading booking details...' : 'Ride details unavailable'}
+        </Text>
       </View>
     );
   }
 
-  const destination = rideStatus === 'ACCEPTED' || rideStatus === 'RIDER_ARRIVED'
-    ? { latitude: booking.pickupLatitude, longitude: booking.pickupLongitude }
-    : { latitude: booking.dropLatitude, longitude: booking.dropLongitude };
+  const destination =
+    rideStatus === 'ACCEPTED' ||
+    rideStatus === 'RIDER_EN_ROUTE' ||
+    rideStatus === 'RIDER_ARRIVED'
+      ? {
+          latitude: asCoordinate(booking.pickupLatitude, currentLocation.latitude),
+          longitude: asCoordinate(
+            booking.pickupLongitude,
+            currentLocation.longitude,
+          ),
+        }
+      : {
+          latitude: asCoordinate(booking.dropLatitude, currentLocation.latitude),
+          longitude: asCoordinate(booking.dropLongitude, currentLocation.longitude),
+        };
+  const canRenderDirections =
+    hasValidCoordinate(currentLocation.latitude) &&
+    hasValidCoordinate(currentLocation.longitude) &&
+    hasValidCoordinate(destination.latitude) &&
+    hasValidCoordinate(destination.longitude) &&
+    Boolean(GOOGLE_PLACES_API_KEY);
 
   return (
     <View style={styles.container}>
@@ -241,19 +373,28 @@ const RideTrackingScreen = () => {
           longitudeDelta: 0.05,
         }}
         showsUserLocation
-        showsMyLocationButton={false}
-      >
+        showsMyLocationButton={false}>
         <Marker coordinate={currentLocation} title="Your Location">
           <View style={styles.riderMarker}>
             <Navigation size={20} color="white" fill="white" />
           </View>
         </Marker>
 
-        {(rideStatus === 'ACCEPTED' || rideStatus === 'RIDER_ARRIVED') && (
+        {(rideStatus === 'ACCEPTED' ||
+          rideStatus === 'RIDER_EN_ROUTE' ||
+          rideStatus === 'RIDER_ARRIVED') && (
           <Marker
-            coordinate={{ latitude: booking.pickupLatitude, longitude: booking.pickupLongitude }}
-            title="Pickup Location"
-          >
+            coordinate={{
+              latitude: asCoordinate(
+                booking.pickupLatitude,
+                currentLocation.latitude,
+              ),
+              longitude: asCoordinate(
+                booking.pickupLongitude,
+                currentLocation.longitude,
+              ),
+            }}
+            title="Pickup Location">
             <View style={styles.pickupMarker}>
               <MapPin size={24} color="white" fill="#3B82F6" />
             </View>
@@ -262,28 +403,46 @@ const RideTrackingScreen = () => {
 
         {rideStatus === 'IN_PROGRESS' && (
           <Marker
-            coordinate={{ latitude: booking.dropLatitude, longitude: booking.dropLongitude }}
-            title="Drop Location"
-          >
+            coordinate={{
+              latitude: asCoordinate(
+                booking.dropLatitude,
+                currentLocation.latitude,
+              ),
+              longitude: asCoordinate(
+                booking.dropLongitude,
+                currentLocation.longitude,
+              ),
+            }}
+            title="Drop Location">
             <View style={styles.dropMarker}>
               <MapPin size={24} color="white" fill="#EF4444" />
             </View>
           </Marker>
         )}
 
-        <MapViewDirections
-          origin={currentLocation}
-          destination={destination}
-          apikey={GOOGLE_PLACES_API_KEY}
-          strokeWidth={4}
-          strokeColor="#3B82F6"
-          onError={(error) => console.log('Directions error:', error)}
-        />
+        {canRenderDirections && (
+          <MapViewDirections
+            origin={currentLocation}
+            destination={destination}
+            apikey={GOOGLE_PLACES_API_KEY}
+            strokeWidth={4}
+            strokeColor="#3B82F6"
+            onError={error => console.log('Directions error:', error)}
+          />
+        )}
       </MapView>
 
-      <View style={styles.bottomSheet}>
+      <ScrollView
+        style={[styles.bottomSheet, {maxHeight: windowHeight * 0.64}]}
+        contentContainerStyle={[
+          styles.bottomSheetContent,
+          {paddingBottom: Math.max(insets.bottom + 20, 28)},
+        ]}
+        showsVerticalScrollIndicator={false}>
         <View style={styles.statusBadge}>
-          <View style={[styles.statusDot, { backgroundColor: getStatusColor() }]} />
+          <View
+            style={[styles.statusDot, {backgroundColor: getStatusColor()}]}
+          />
           <Text style={styles.statusText}>{getStatusText()}</Text>
         </View>
 
@@ -292,16 +451,34 @@ const RideTrackingScreen = () => {
             <User size={24} color="#3B82F6" />
           </View>
           <View style={styles.userInfo}>
-            <Text style={styles.userName}>{booking.user?.fullName || 'User'}</Text>
-            <Text style={styles.userPhone}>{booking.user?.mobileNumber || 'Phone not available'}</Text>
+            <Text style={styles.userName}>
+              {booking.user?.fullName || 'User'}
+            </Text>
+            <Text style={styles.userPhone}>
+              {booking.user?.mobileNumber || 'Phone not available'}
+            </Text>
           </View>
-          <TouchableOpacity 
-            style={[styles.callBtn, !booking.user?.mobileNumber && styles.callBtnDisabled]} 
-            onPress={handleCallUser}
-            disabled={!booking.user?.mobileNumber}
-          >
-            <Phone size={20} color="white" />
-          </TouchableOpacity>
+          <View style={styles.userActions}>
+            <TouchableOpacity
+              style={[
+                styles.callBtn,
+                !booking.user?.mobileNumber && styles.callBtnDisabled,
+              ]}
+              onPress={handleCallUser}
+              disabled={!booking.user?.mobileNumber}>
+              <Phone size={20} color="white" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.callBtn, styles.secondaryActionBtn, {backgroundColor: '#111827'}]}
+              onPress={() =>
+                (navigation as any).navigate('Chat', {
+                  bookingId: String(booking.id),
+                  userName: booking.user?.fullName || 'User',
+                })
+              }>
+              <MessageCircle size={20} color="white" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.locationCard}>
@@ -309,15 +486,21 @@ const RideTrackingScreen = () => {
             <View style={styles.locationDot} />
             <View style={styles.locationDetails}>
               <Text style={styles.locationLabel}>Pickup</Text>
-              <Text style={styles.locationAddress}>{booking.pickupAddress}</Text>
+              <Text style={styles.locationAddress}>
+                {booking.pickupAddress}
+              </Text>
             </View>
           </View>
           {booking.dropAddress && (
             <View style={styles.locationRow}>
-              <View style={[styles.locationDot, { backgroundColor: '#EF4444' }]} />
+              <View
+                style={[styles.locationDot, {backgroundColor: '#EF4444'}]}
+              />
               <View style={styles.locationDetails}>
                 <Text style={styles.locationLabel}>Drop</Text>
-                <Text style={styles.locationAddress}>{booking.dropAddress}</Text>
+                <Text style={styles.locationAddress}>
+                  {booking.dropAddress}
+                </Text>
               </View>
             </View>
           )}
@@ -329,12 +512,11 @@ const RideTrackingScreen = () => {
           <Text style={styles.navBtnText}>Open Navigation</Text>
         </TouchableOpacity>
 
-        {rideStatus === 'ACCEPTED' && (
+        {(rideStatus === 'ACCEPTED' || rideStatus === 'RIDER_EN_ROUTE') && (
           <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: '#10B981' }]}
+            style={[styles.actionBtn, {backgroundColor: '#10B981'}]}
             onPress={handleArrived}
-            disabled={loading}
-          >
+            disabled={loading}>
             <CheckCircle size={20} color="white" />
             <Text style={styles.actionBtnText}>I've Arrived</Text>
           </TouchableOpacity>
@@ -356,24 +538,24 @@ const RideTrackingScreen = () => {
               <TouchableOpacity
                 style={styles.verifyBtn}
                 onPress={handleVerifyOtp}
-                disabled={loading || otp.length !== 4}
-              >
+                disabled={loading || otp.length !== 4}>
                 <Text style={styles.verifyBtnText}>Verify & Start</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.otpHint}>
               <AlertCircle size={14} color="#6B7280" />
-              <Text style={styles.otpHintText}>Ask the user for the 4-digit OTP</Text>
+              <Text style={styles.otpHintText}>
+                Ask the user for the 4-digit OTP
+              </Text>
             </View>
           </View>
         )}
 
         {rideStatus === 'IN_PROGRESS' && (
           <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: '#EF4444' }]}
+            style={[styles.actionBtn, {backgroundColor: '#EF4444'}]}
             onPress={handleCompleteRide}
-            disabled={loading}
-          >
+            disabled={loading}>
             <CheckCircle size={20} color="white" />
             <Text style={styles.actionBtnText}>Complete Ride</Text>
           </TouchableOpacity>
@@ -382,7 +564,9 @@ const RideTrackingScreen = () => {
         <View style={styles.fareCard}>
           <DollarSign size={18} color="#10B981" />
           <Text style={styles.fareLabel}>Fare Amount</Text>
-          <Text style={styles.fareAmount}>₹{booking.finalFare || booking.estimatedFare}</Text>
+          <Text style={styles.fareAmount}>
+            ₹{booking.finalFare || booking.estimatedFare}
+          </Text>
         </View>
 
         {rideStatus !== 'IN_PROGRESS' && rideStatus !== 'COMPLETED' && (
@@ -390,27 +574,39 @@ const RideTrackingScreen = () => {
             <Text style={styles.cancelBtnText}>Cancel Ride</Text>
           </TouchableOpacity>
         )}
-      </View>
+      </ScrollView>
     </View>
   );
 
   function getStatusColor() {
     switch (rideStatus) {
-      case 'ACCEPTED': return '#3B82F6';
-      case 'RIDER_ARRIVED': return '#F59E0B';
-      case 'IN_PROGRESS': return '#10B981';
-      case 'COMPLETED': return '#6B7280';
-      default: return '#6B7280';
+      case 'ACCEPTED':
+        return '#3B82F6';
+      case 'RIDER_ARRIVED':
+        return '#F59E0B';
+      case 'IN_PROGRESS':
+        return '#10B981';
+      case 'COMPLETED':
+        return '#6B7280';
+      default:
+        return '#6B7280';
     }
   }
 
   function getStatusText() {
     switch (rideStatus) {
-      case 'ACCEPTED': return 'Navigate to Pickup';
-      case 'RIDER_ARRIVED': return 'Waiting for User';
-      case 'IN_PROGRESS': return 'Ride in Progress';
-      case 'COMPLETED': return 'Ride Completed';
-      default: return 'Unknown';
+      case 'ACCEPTED':
+        return 'Navigate to Pickup';
+      case 'RIDER_ARRIVED':
+        return 'Waiting for User';
+      case 'RIDER_EN_ROUTE':
+        return 'Navigate to Pickup';
+      case 'IN_PROGRESS':
+        return 'Ride in Progress';
+      case 'COMPLETED':
+        return 'Ride Completed';
+      default:
+        return 'Unknown';
     }
   }
 };
@@ -444,7 +640,7 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#fff',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
@@ -459,7 +655,7 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#fff',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
@@ -474,7 +670,7 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#fff',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
@@ -489,12 +685,15 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 32,
     paddingHorizontal: 20,
     paddingTop: 20,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+    paddingBottom: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
+    shadowOffset: {width: 0, height: -4},
     shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 8,
+  },
+  bottomSheetContent: {
+    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
   },
   statusBadge: {
     flexDirection: 'row',
@@ -538,6 +737,13 @@ const styles = StyleSheet.create({
   },
   userInfo: {
     flex: 1,
+  },
+  userActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  secondaryActionBtn: {
+    marginLeft: 10,
   },
   userName: {
     fontSize: 16,

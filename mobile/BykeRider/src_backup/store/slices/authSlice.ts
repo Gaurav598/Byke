@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import {createSlice, createAsyncThunk, PayloadAction} from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../../config/api';
 
@@ -22,21 +22,27 @@ const initialState: AuthState = {
 
 export const sendOtp = createAsyncThunk(
   'auth/sendOtp',
-  async (mobileNumber: string, { rejectWithValue }) => {
+  async (mobileNumber: string, {rejectWithValue}) => {
     try {
-      const response = await api.post('/auth/send-otp', { mobileNumber });
+      const response = await api.post('/auth/send-otp', {mobileNumber});
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to send OTP');
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to send OTP',
+      );
     }
-  }
+  },
 );
 
 export const verifyOtp = createAsyncThunk(
   'auth/verifyOtp',
   async (
-    { mobileNumber, otpCode, fullName }: { mobileNumber: string; otpCode: string; fullName?: string },
-    { rejectWithValue }
+    {
+      mobileNumber,
+      otpCode,
+      fullName,
+    }: {mobileNumber: string; otpCode: string; fullName?: string},
+    {rejectWithValue},
   ) => {
     try {
       const response = await api.post('/auth/verify-otp', {
@@ -44,18 +50,20 @@ export const verifyOtp = createAsyncThunk(
         otpCode,
         fullName,
       });
-      
-      const { accessToken, refreshToken, userId, role } = response.data;
-      
+
+      const {accessToken, refreshToken, userId, role} = response.data;
+
       await AsyncStorage.setItem('accessToken', accessToken);
       await AsyncStorage.setItem('refreshToken', refreshToken);
       await AsyncStorage.setItem('userId', userId.toString());
-      
+
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'OTP verification failed');
+      return rejectWithValue(
+        error.response?.data?.message || 'OTP verification failed',
+      );
     }
-  }
+  },
 );
 
 export const logout = createAsyncThunk('auth/logout', async () => {
@@ -68,29 +76,32 @@ const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    setCredentials: (state, action: PayloadAction<{ accessToken: string; user: any }>) => {
+    setCredentials: (
+      state,
+      action: PayloadAction<{accessToken: string; user: any}>,
+    ) => {
       state.accessToken = action.payload.accessToken;
       state.user = action.payload.user;
       state.isAuthenticated = true;
     },
-    clearError: (state) => {
+    clearError: state => {
       state.error = null;
     },
   },
-  extraReducers: (builder) => {
+  extraReducers: builder => {
     builder
-      .addCase(sendOtp.pending, (state) => {
+      .addCase(sendOtp.pending, state => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(sendOtp.fulfilled, (state) => {
+      .addCase(sendOtp.fulfilled, state => {
         state.loading = false;
       })
       .addCase(sendOtp.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })
-      .addCase(verifyOtp.pending, (state) => {
+      .addCase(verifyOtp.pending, state => {
         state.loading = true;
         state.error = null;
       })
@@ -98,14 +109,14 @@ const authSlice = createSlice({
         state.loading = false;
         state.accessToken = action.payload.accessToken;
         state.refreshToken = action.payload.refreshToken;
-        state.user = { id: action.payload.userId, role: action.payload.role };
+        state.user = {id: action.payload.userId, role: action.payload.role};
         state.isAuthenticated = true;
       })
       .addCase(verifyOtp.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })
-      .addCase(logout.fulfilled, (state) => {
+      .addCase(logout.fulfilled, state => {
         state.user = null;
         state.accessToken = null;
         state.refreshToken = null;
@@ -114,5 +125,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { setCredentials, clearError } = authSlice.actions;
+export const {setCredentials, clearError} = authSlice.actions;
 export default authSlice.reducer;

@@ -89,6 +89,21 @@ public class RiderService {
     }
 
     @Transactional
+    public Rider updateBasicProfile(Long riderId, String vehicleModel, String vehicleRegistrationNumber, String vehicleType) {
+        Rider rider = getRiderById(riderId);
+        if (vehicleModel != null && !vehicleModel.isBlank()) {
+            rider.setVehicleModel(vehicleModel.trim());
+        }
+        if (vehicleRegistrationNumber != null && !vehicleRegistrationNumber.isBlank()) {
+            rider.setVehicleRegistrationNumber(vehicleRegistrationNumber.trim());
+        }
+        if (vehicleType != null && !vehicleType.isBlank()) {
+            rider.setVehicleType(vehicleType.trim());
+        }
+        return riderRepository.save(rider);
+    }
+
+    @Transactional
     public Rider updateRiderDocuments(Long riderId, Rider documentUrls) {
         Rider rider = getRiderById(riderId);
         

@@ -47,7 +47,13 @@ export interface Ride {
     address: string;
   };
   vehicleType: string;
-  status: 'PENDING' | 'ACCEPTED' | 'RIDER_ARRIVED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  status:
+    | 'PENDING'
+    | 'ACCEPTED'
+    | 'RIDER_ARRIVED'
+    | 'IN_PROGRESS'
+    | 'COMPLETED'
+    | 'CANCELLED';
   fare?: number;
   maxFare: number;
   distanceKm: number;
@@ -55,7 +61,9 @@ export interface Ride {
   updatedAt: string;
 }
 
-export const createRideRequest = async (request: RideRequest): Promise<{ rideId: string }> => {
+export const createRideRequest = async (
+  request: RideRequest,
+): Promise<{rideId: string}> => {
   try {
     // Backend expects BookingRequest at POST /api/bookings
     const response = await api.post('/bookings', {
@@ -79,18 +87,27 @@ export const createRideRequest = async (request: RideRequest): Promise<{ rideId:
       throw new Error('Invalid response from server when creating booking');
     }
 
-    const bookingId = response.data.id ?? response.data.bookingId ?? response.data.rideId;
+    const bookingId =
+      response.data.id ?? response.data.bookingId ?? response.data.rideId;
     if (!bookingId) {
       console.error('Booking API did not return id:', response.data);
-      throw new Error(response.data?.message || 'Booking created but no id returned');
+      throw new Error(
+        response.data?.message || 'Booking created but no id returned',
+      );
     }
 
     // BookingController returns created Booking object; return its id as rideId
-    return { rideId: String(bookingId) };
+    return {rideId: String(bookingId)};
   } catch (error: any) {
-    console.error('Error creating ride request:', error?.response?.data || error.message || error);
+    console.error(
+      'Error creating ride request:',
+      error?.response?.data || error.message || error,
+    );
     // Surface backend message if available
-    const msg = error?.response?.data?.message || error?.message || 'Failed to create ride request';
+    const msg =
+      error?.response?.data?.message ||
+      error?.message ||
+      'Failed to create ride request';
     throw new Error(msg);
   }
 };
@@ -107,7 +124,10 @@ export const getRideBids = async (rideId: string): Promise<Bid[]> => {
   }
 };
 
-export const acceptBid = async (rideId: string, bidId: string): Promise<Ride> => {
+export const acceptBid = async (
+  rideId: string,
+  bidId: string,
+): Promise<Ride> => {
   try {
     // Backend endpoint is /api/bids/{bidId}/accept
     const response = await api.post(`/bids/${bidId}/accept`);
@@ -125,15 +145,20 @@ export const getRideDetails = async (rideId: string): Promise<any> => {
     return response.data;
   } catch (error: any) {
     console.error('Error fetching ride details:', error);
-    throw new Error(error.response?.data?.message || 'Failed to fetch ride details');
+    throw new Error(
+      error.response?.data?.message || 'Failed to fetch ride details',
+    );
   }
 };
 
-export const cancelRide = async (rideId: string, reason?: string): Promise<void> => {
+export const cancelRide = async (
+  rideId: string,
+  reason?: string,
+): Promise<void> => {
   try {
     // Backend endpoint is /api/bookings/{id}/cancel
     await api.post(`/bookings/${rideId}/cancel`, null, {
-      params: { reason: reason || 'User cancelled', byUser: true }
+      params: {reason: reason || 'User cancelled', byUser: true},
     });
   } catch (error: any) {
     console.error('Error cancelling ride:', error);
@@ -143,21 +168,28 @@ export const cancelRide = async (rideId: string, reason?: string): Promise<void>
 
 export const getRideHistory = async (): Promise<Ride[]> => {
   try {
-    const response = await api.get('/rides/history');
+    const response = await api.get('/bookings/user/my-bookings');
     return response.data;
   } catch (error: any) {
     console.error('Error fetching ride history:', error);
-    throw new Error(error.response?.data?.message || 'Failed to fetch ride history');
+    throw new Error(
+      error.response?.data?.message || 'Failed to fetch ride history',
+    );
   }
 };
 
 export const rateRide = async (
   rideId: string,
   rating: number,
-  feedback?: string
+  feedback?: string,
 ): Promise<void> => {
   try {
-    await api.post(`/rides/${rideId}/rate`, { rating, feedback });
+    await api.post(`/bookings/${rideId}/rate`, null, {
+      params: {
+        userRating: rating,
+        userReview: feedback || '',
+      },
+    });
   } catch (error: any) {
     console.error('Error rating ride:', error);
     throw new Error(error.response?.data?.message || 'Failed to rate ride');

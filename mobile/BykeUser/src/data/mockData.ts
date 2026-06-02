@@ -1,25 +1,108 @@
 export const MOCK_OTP = '4829';
 
 export const POPULAR_PLACES = [
-  { id: '1', name: 'Manyata Tech Park', address: 'Nagavara, Bangalore', distanceKm: 18, type: 'work' },
-  { id: '2', name: 'MG Road Metro', address: 'MG Road, Bangalore', distanceKm: 6, type: 'transit' },
-  { id: '3', name: 'Indiranagar', address: '100ft Road, Indiranagar', distanceKm: 4, type: 'area' },
-  { id: '4', name: 'Whitefield IT Park', address: 'Whitefield, Bangalore', distanceKm: 22, type: 'work' },
-  { id: '5', name: 'Koramangala', address: '5th Block, Koramangala', distanceKm: 3, type: 'area' },
-  { id: '6', name: 'Kempegowda Airport', address: 'Devanahalli, Bangalore', distanceKm: 38, type: 'airport' },
+  {
+    id: '1',
+    name: 'Manyata Tech Park',
+    address: 'Nagavara, Bangalore',
+    distanceKm: 18,
+    type: 'work',
+  },
+  {
+    id: '2',
+    name: 'MG Road Metro',
+    address: 'MG Road, Bangalore',
+    distanceKm: 6,
+    type: 'transit',
+  },
+  {
+    id: '3',
+    name: 'Indiranagar',
+    address: '100ft Road, Indiranagar',
+    distanceKm: 4,
+    type: 'area',
+  },
+  {
+    id: '4',
+    name: 'Whitefield IT Park',
+    address: 'Whitefield, Bangalore',
+    distanceKm: 22,
+    type: 'work',
+  },
+  {
+    id: '5',
+    name: 'Koramangala',
+    address: '5th Block, Koramangala',
+    distanceKm: 3,
+    type: 'area',
+  },
+  {
+    id: '6',
+    name: 'Kempegowda Airport',
+    address: 'Devanahalli, Bangalore',
+    distanceKm: 38,
+    type: 'airport',
+  },
 ];
 
 export const SEARCH_RESULTS = [
-  { id: 's1', name: 'Manyata Tech Park Gate 1', address: 'Nagavara Main Road', distanceKm: 18 },
-  { id: 's2', name: 'Manyata Embassy Business Park', address: 'Outer Ring Road', distanceKm: 19 },
-  { id: 's3', name: 'Manyata Tech Park Gate 2', address: 'Rachenahalli', distanceKm: 18.5 },
+  {
+    id: 's1',
+    name: 'Manyata Tech Park Gate 1',
+    address: 'Nagavara Main Road',
+    distanceKm: 18,
+  },
+  {
+    id: 's2',
+    name: 'Manyata Embassy Business Park',
+    address: 'Outer Ring Road',
+    distanceKm: 19,
+  },
+  {
+    id: 's3',
+    name: 'Manyata Tech Park Gate 2',
+    address: 'Rachenahalli',
+    distanceKm: 18.5,
+  },
 ];
 
 export const VEHICLE_TYPES = [
-  { id: 'bike', label: 'Bike', icon: '🏍', baseMin: 60, baseMax: 120, etaMin: 15, desc: 'Fastest' },
-  { id: 'auto', label: 'Auto', icon: '🛺', baseMin: 100, baseMax: 200, etaMin: 20, desc: 'Comfortable' },
-  { id: 'cab', label: 'Cab', icon: '🚗', baseMin: 200, baseMax: 380, etaMin: 25, desc: 'Premium' },
-  { id: 'share', label: 'Share', icon: '🚌', baseMin: 40, baseMax: 80, etaMin: 30, desc: 'Cheapest' },
+  {
+    id: 'bike',
+    label: 'Bike',
+    icon: '🏍',
+    baseMin: 60,
+    baseMax: 120,
+    etaMin: 15,
+    desc: 'Fastest',
+  },
+  {
+    id: 'auto',
+    label: 'Auto',
+    icon: '🛺',
+    baseMin: 100,
+    baseMax: 200,
+    etaMin: 20,
+    desc: 'Comfortable',
+  },
+  {
+    id: 'cab',
+    label: 'Cab',
+    icon: '🚗',
+    baseMin: 200,
+    baseMax: 380,
+    etaMin: 25,
+    desc: 'Premium',
+  },
+  {
+    id: 'share',
+    label: 'Share',
+    icon: '🚌',
+    baseMin: 40,
+    baseMax: 80,
+    etaMin: 30,
+    desc: 'Cheapest',
+  },
 ];
 
 export const MOCK_BIDS = [

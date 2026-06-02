@@ -1,15 +1,22 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useSelector } from 'react-redux';
-import { RootState } from '../store';
-import { Home, ListOrdered, Wallet, User } from 'lucide-react-native';
+import React, {useEffect} from 'react';
+import {View, Text, StyleSheet, Platform} from 'react-native';
+import {
+  NavigationContainer,
+  createNavigationContainerRef,
+} from '@react-navigation/native';
+import {createStackNavigator} from '@react-navigation/stack';
+import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
+import {useSelector} from 'react-redux';
+import {RootState} from '../store';
+import {Home, ListOrdered, Wallet, User} from 'lucide-react-native';
 
-import { NotificationProvider, useNotification } from '../context/NotificationContext';
-import { setupNotificationListeners } from '../services/notificationService';
+import {
+  NotificationProvider,
+  useNotification,
+} from '../context/NotificationContext';
+import {setupNotificationListeners} from '../services/notificationService';
 import PopupNotifications from '../components/PopupNotifications';
+import api from '../config/api';
 
 import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
@@ -21,16 +28,54 @@ import ProfileScreen from '../screens/ProfileScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import RideTrackingScreen from '../screens/RideTrackingScreen';
 import OTPEntryScreen from '../screens/OTPEntryScreen';
+import ChatScreen from '../screens/ChatScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
+const navigationRef = createNavigationContainerRef<any>();
 
-const TabIcon = ({ icon: Icon, focused, label }: { icon: any; focused: boolean; label: string }) => (
+const handleRiderNotificationOpen = async (remoteMessage: any) => {
+  const data = remoteMessage?.data || {};
+  const bookingId = String(data.bookingId || '').trim();
+  const type = String(data.type || '').toUpperCase();
+
+  if (!navigationRef.isReady()) {
+    return;
+  }
+
+  if (bookingId) {
+    if (type === 'NEW_BOOKING') {
+      navigationRef.navigate('AvailableBookings');
+      return;
+    }
+
+    navigationRef.navigate('RideTracking', {bookingId: Number(bookingId)});
+    return;
+  }
+
+  navigationRef.navigate('Notifications');
+};
+
+const TabIcon = ({
+  icon: Icon,
+  focused,
+  label,
+}: {
+  icon: any;
+  focused: boolean;
+  label: string;
+}) => (
   <View style={styles.tabIconContainer}>
     <View style={[styles.iconWrapper, focused && styles.iconWrapperActive]}>
-      <Icon size={22} color={focused ? '#000' : '#9CA3AF'} strokeWidth={focused ? 2.5 : 2} />
+      <Icon
+        size={22}
+        color={focused ? '#000' : '#9CA3AF'}
+        strokeWidth={focused ? 2.5 : 2}
+      />
     </View>
-    <Text style={[styles.tabLabel, focused && styles.tabLabelActive]}>{label}</Text>
+    <Text style={[styles.tabLabel, focused && styles.tabLabelActive]}>
+      {label}
+    </Text>
   </View>
 );
 
@@ -41,34 +86,41 @@ const HomeTabs = () => {
         headerShown: false,
         tabBarShowLabel: false,
         tabBarStyle: styles.tabBar,
-      }}
-    >
+      }}>
       <Tab.Screen
         name="HomeTab"
         component={HomeScreen}
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon icon={Home} focused={focused} label="Home" />,
+          tabBarIcon: ({focused}) => (
+            <TabIcon icon={Home} focused={focused} label="Home" />
+          ),
         }}
       />
       <Tab.Screen
         name="BookingsTab"
         component={AvailableBookingsScreen}
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon icon={ListOrdered} focused={focused} label="Orders" />,
+          tabBarIcon: ({focused}) => (
+            <TabIcon icon={ListOrdered} focused={focused} label="Orders" />
+          ),
         }}
       />
       <Tab.Screen
         name="EarningsTab"
         component={EarningsScreen}
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon icon={Wallet} focused={focused} label="Earnings" />,
+          tabBarIcon: ({focused}) => (
+            <TabIcon icon={Wallet} focused={focused} label="Earnings" />
+          ),
         }}
       />
       <Tab.Screen
         name="ProfileTab"
         component={ProfileScreen}
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon icon={User} focused={focused} label="Profile" />,
+          tabBarIcon: ({focused}) => (
+            <TabIcon icon={User} focused={focused} label="Profile" />
+          ),
         }}
       />
     </Tab.Navigator>
@@ -76,22 +128,27 @@ const HomeTabs = () => {
 };
 
 const NavigationContent = () => {
-  const { showNotification } = useNotification();
-  const { isAuthenticated, loading } = useSelector((state: RootState) => state.auth);
+  const {showNotification} = useNotification();
+  const {isAuthenticated, loading} = useSelector(
+    (state: RootState) => state.auth,
+  );
 
   useEffect(() => {
     const unsubscribe = setupNotificationListeners(
-      (remoteMessage) => {
+      remoteMessage => {
         showNotification({
           title: remoteMessage.notification?.title || 'New Notification',
           body: remoteMessage.notification?.body || '',
           type: 'info',
           data: remoteMessage.data,
+          onPress: () => {
+            handleRiderNotificationOpen(remoteMessage);
+          },
         });
       },
-      (remoteMessage) => {
-        console.log('Notification opened app:', remoteMessage);
-      }
+      remoteMessage => {
+        handleRiderNotificationOpen(remoteMessage);
+      },
     );
 
     return () => unsubscribe();
@@ -104,46 +161,51 @@ const NavigationContent = () => {
   return (
     <>
       <PopupNotifications />
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator screenOptions={{headerShown: false}}>
         {!isAuthenticated ? (
           <Stack.Screen name="Login" component={LoginScreen} />
         ) : (
           <>
             <Stack.Screen name="Home" component={HomeTabs} />
-            <Stack.Screen 
-              name="AvailableBookings" 
+            <Stack.Screen
+              name="AvailableBookings"
               component={AvailableBookingsScreen}
-              options={{ headerShown: false }}
+              options={{headerShown: false}}
             />
-            <Stack.Screen 
-              name="MyBids" 
+            <Stack.Screen
+              name="MyBids"
               component={MyBidsScreen}
-              options={{ headerShown: false }}
+              options={{headerShown: false}}
             />
-            <Stack.Screen 
-              name="Earnings" 
+            <Stack.Screen
+              name="Earnings"
               component={EarningsScreen}
-              options={{ headerShown: false }}
+              options={{headerShown: false}}
             />
-            <Stack.Screen 
-              name="Documents" 
+            <Stack.Screen
+              name="Documents"
               component={DocumentsScreen}
-              options={{ headerShown: false }}
+              options={{headerShown: false}}
             />
-            <Stack.Screen 
-              name="Notifications" 
+            <Stack.Screen
+              name="Notifications"
               component={NotificationsScreen}
-              options={{ headerShown: false }}
+              options={{headerShown: false}}
             />
-            <Stack.Screen 
-              name="RideTracking" 
+            <Stack.Screen
+              name="RideTracking"
               component={RideTrackingScreen}
-              options={{ headerShown: false }}
+              options={{headerShown: false}}
             />
-            <Stack.Screen 
-              name="OTPEntry" 
+            <Stack.Screen
+              name="OTPEntry"
               component={OTPEntryScreen}
-              options={{ headerShown: false }}
+              options={{headerShown: false}}
+            />
+            <Stack.Screen
+              name="Chat"
+              component={ChatScreen}
+              options={{headerShown: false}}
             />
           </>
         )}
@@ -154,7 +216,7 @@ const NavigationContent = () => {
 
 const AppNavigator = () => {
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <NotificationProvider>
         <NavigationContent />
       </NotificationProvider>
@@ -170,7 +232,7 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: Platform.OS === 'ios' ? 28 : 10,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
+    shadowOffset: {width: 0, height: -4},
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 20,

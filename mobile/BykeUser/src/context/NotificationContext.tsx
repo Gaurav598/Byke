@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, {createContext, useContext, useState, useCallback} from 'react';
 
 export interface Notification {
   id: string;
@@ -6,6 +6,7 @@ export interface Notification {
   body: string;
   type?: 'info' | 'success' | 'warning' | 'error';
   data?: any;
+  onPress?: () => void;
 }
 
 interface NotificationContextType {
@@ -14,28 +15,36 @@ interface NotificationContextType {
   hideNotification: (id: string) => void;
 }
 
-const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
+const NotificationContext = createContext<NotificationContextType | undefined>(
+  undefined,
+);
 
-export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const NotificationProvider: React.FC<{children: React.ReactNode}> = ({
+  children,
+}) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  const showNotification = useCallback((notification: Omit<Notification, 'id'>) => {
-    const id = Math.random().toString(36).substring(7);
-    const newNotification = { ...notification, id };
-    setNotifications((prev) => [...prev, newNotification]);
-
-    // Auto hide after 5 seconds
-    setTimeout(() => {
-      hideNotification(id);
-    }, 5000);
-  }, []);
-
   const hideNotification = useCallback((id: string) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    setNotifications(prev => prev.filter(n => n.id !== id));
   }, []);
+
+  const showNotification = useCallback(
+    (notification: Omit<Notification, 'id'>) => {
+      const id = Math.random().toString(36).substring(7);
+      const newNotification = {...notification, id};
+      setNotifications(prev => [...prev, newNotification]);
+
+      // Auto hide after 5 seconds
+      setTimeout(() => {
+        hideNotification(id);
+      }, 5000);
+    },
+    [hideNotification],
+  );
 
   return (
-    <NotificationContext.Provider value={{ notifications, showNotification, hideNotification }}>
+    <NotificationContext.Provider
+      value={{notifications, showNotification, hideNotification}}>
       {children}
     </NotificationContext.Provider>
   );
