@@ -90,13 +90,13 @@ const Dashboard = () => {
         <p className="text-gray-600 mt-1">Welcome to BYKE Admin Panel</p>
       </div>
 
-      {stats?.pendingRiders > 0 && (
+      {stats?.pendingRiders && stats.pendingRiders > 0 && (
         <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
           <div className="flex items-center">
             <AlertCircle className="text-yellow-400 mr-3" size={20} />
             <div>
               <p className="text-yellow-800 font-semibold">
-                {stats.pendingRiders} rider applications pending review
+                {stats?.pendingRiders || 0} rider applications pending review
               </p>
               <p className="text-yellow-700 text-sm">
                 Click on "Rider Verification" to review applications

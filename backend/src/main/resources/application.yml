@@ -3,9 +3,9 @@ spring:
     name: byke-backend
   
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:byke}
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:postgres}
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
   
   jpa:
@@ -19,12 +19,12 @@ spring:
   
   data:
     redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
       password: ${REDIS_PASSWORD:}
   
   kafka:
-    bootstrap-servers: ${KAFKA_SERVERS:localhost:9092}
+    bootstrap-servers: ${KAFKA_SERVERS}
     consumer:
       group-id: byke-group
       auto-offset-reset: earliest
@@ -41,32 +41,29 @@ server:
   port: ${SERVER_PORT:8080}
 
 jwt:
-  secret: ${JWT_SECRET:your-secret-key-change-in-production}
+  secret: ${JWT_SECRET}
   expiration: 7776000000
   refresh-expiration: 15552000000
 
 
 stripe:
-  api-key: ${STRIPE_API_KEY:disabled}
-  webhook-secret: ${STRIPE_WEBHOOK_SECRET:disabled}
-  subscription-price-id: ${STRIPE_SUBSCRIPTION_PRICE_ID:disabled}
+  api-key: ${STRIPE_API_KEY}
+  webhook-secret: ${STRIPE_WEBHOOK_SECRET}
+  subscription-price-id: ${STRIPE_SUBSCRIPTION_PRICE_ID}
 
 aws:
   access-key: ${AWS_ACCESS_KEY}
   secret-key: ${AWS_SECRET_KEY}
   s3:
-    bucket: ${AWS_S3_BUCKET:byke-documents}
-    region: ${AWS_REGION:us-east-1}
+    bucket: ${AWS_S3_BUCKET}
+    region: ${AWS_REGION}
 
 google:
   maps:
-    api-key: ${GOOGLE_MAPS_API_KEY:}
+    api-key: ${GOOGLE_MAPS_API_KEY}
 
 firebase:
   credentials-path: ${FIREBASE_CREDENTIALS_PATH:}
-  api-key: ${FIREBASE_API_KEY:}
-  session-ttl-seconds: ${FIREBASE_SESSION_TTL_SECONDS:300}
-
 
 app:
   bidding:

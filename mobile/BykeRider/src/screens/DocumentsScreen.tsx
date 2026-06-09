@@ -8,32 +8,27 @@ import {
   Alert,
   ActivityIndicator,
   StyleSheet,
-  Modal,
-  TextInput,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
+import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
 import api from '../config/api';
 import {
   ArrowLeft,
   FileText,
   CheckCircle2,
   AlertCircle,
-  Shield,
   Clock,
   Info,
   Camera,
   Briefcase,
   Landmark,
-  CreditCard,
 } from 'lucide-react-native';
 
 const DocumentsScreen = () => {
   const navigation = useNavigation();
   const [loading, setLoading] = useState(true);
   const [docs, setDocs] = useState<any[]>([]);
-  const [modalDoc, setModalDoc] = useState<any | null>(null);
-  const [docUrlInput, setDocUrlInput] = useState('');
-  const [saving, setSaving] = useState(false);
+  const [uploadingDocId, setUploadingDocId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchRiderProfile();
@@ -52,7 +47,6 @@ const DocumentsScreen = () => {
           status: rider.drivingLicenseUrl ? 'verified' : 'missing',
           icon: Briefcase,
           color: '#3B82F6',
-          url: rider.drivingLicenseUrl,
           patchField: 'drivingLicenseUrl',
         },
         {
@@ -61,38 +55,18 @@ const DocumentsScreen = () => {
           status: rider.vehicleRcUrl ? 'verified' : 'missing',
           icon: FileText,
           color: '#EAB308',
-          url: rider.vehicleRcUrl,
           patchField: 'vehicleRcUrl',
         },
         {
           id: 'aadhar',
-          label: 'Aadhaar Card',
+          label: 'Government ID Card',
           status: rider.aadharCardUrl ? 'verified' : 'missing',
           icon: Landmark,
           color: '#10B981',
-          url: rider.aadharCardUrl,
           patchField: 'aadharCardUrl',
         },
-        {
-          id: 'pan',
-          label: 'PAN Card',
-          status: rider.panCardUrl ? 'verified' : 'missing',
-          icon: CreditCard,
-          color: '#8B5CF6',
-          url: rider.panCardUrl,
-          patchField: 'panCardUrl',
-        },
-        {
-          id: 'ins',
-          label: 'Insurance Policy',
-          status: rider.vehicleInsuranceUrl ? 'verified' : 'missing',
-          icon: Shield,
-          color: '#EF4444',
-          url: rider.vehicleInsuranceUrl,
-          patchField: 'vehicleInsuranceUrl',
-        },
       ]);
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Failed to load documents');
     } finally {
       setLoading(false);
@@ -102,61 +76,89 @@ const DocumentsScreen = () => {
   const getStatusStyle = (status: string) => {
     switch (status) {
       case 'verified':
-        return {
-          bg: '#D1FAE5',
-          text: '#10B981',
-          icon: CheckCircle2,
-          label: 'Verified',
-        };
+        return {bg: '#D1FAE5', text: '#10B981', icon: CheckCircle2, label: 'Verified'};
       case 'pending':
-        return {
-          bg: '#FEF3C7',
-          text: '#F59E0B',
-          icon: Clock,
-          label: 'In Review',
-        };
+        return {bg: '#FEF3C7', text: '#F59E0B', icon: Clock, label: 'In Review'};
       default:
-        return {
-          bg: '#FEE2E2',
-          text: '#EF4444',
-          icon: AlertCircle,
-          label: 'Missing',
-        };
+        return {bg: '#FEE2E2', text: '#EF4444', icon: AlertCircle, label: 'Missing'};
     }
   };
 
-  const openUpdateModal = (doc: any) => {
-    setModalDoc(doc);
-    setDocUrlInput(doc.url || '');
-  };
-
-  const saveDocument = async () => {
-    if (!modalDoc) {
-      return;
-    }
-    const url = docUrlInput.trim();
-    if (!url) {
-      Alert.alert('Error', 'Please enter a document URL');
+  const uploadDocumentFile = async (doc: any, fileAsset: any) => {
+    if (!fileAsset?.uri) {
+      Alert.alert('Error', 'Failed to read selected file');
       return;
     }
 
-    setSaving(true);
+    const fileName =
+      fileAsset.fileName ||
+      `${doc.id}-${Date.now()}.${(fileAsset.type || 'image/jpeg').split('/')[1] || 'jpg'}`;
+    const fileType = fileAsset.type || 'image/jpeg';
+
+    const formData = new FormData();
+    formData.append('file', {
+      uri: fileAsset.uri,
+      type: fileType,
+      name: fileName,
+    } as any);
+
+    setUploadingDocId(doc.id);
     try {
-      await api.patch('/rider/documents', {
-        [modalDoc.patchField]: url,
+      const uploadResponse = await api.post('/upload/document', formData, {
+        headers: {'Content-Type': 'multipart/form-data'},
       });
-      setModalDoc(null);
-      setDocUrlInput('');
+      const uploadedUrl = uploadResponse.data;
+      if (!uploadedUrl || typeof uploadedUrl !== 'string') {
+        throw new Error('Upload response missing file URL');
+      }
+
+      await api.patch('/rider/documents', {
+        [doc.patchField]: uploadedUrl,
+      });
       await fetchRiderProfile();
-      Alert.alert('Success', `${modalDoc.label} updated`);
+      Alert.alert('Success', `${doc.label} uploaded successfully`);
     } catch (error: any) {
-      Alert.alert(
-        'Error',
-        error.response?.data?.message || 'Failed to update document',
-      );
+      Alert.alert('Error', error.response?.data?.message || 'Failed to update document');
     } finally {
-      setSaving(false);
+      setUploadingDocId(null);
     }
+  };
+
+  const openPicker = async (doc: any, source: 'camera' | 'gallery') => {
+    try {
+      const pickerResult =
+        source === 'camera'
+          ? await launchCamera({
+              mediaType: 'photo',
+              includeBase64: false,
+              saveToPhotos: false,
+            })
+          : await launchImageLibrary({
+              mediaType: 'photo',
+              includeBase64: false,
+              selectionLimit: 1,
+            });
+
+      if (pickerResult.didCancel) {
+        return;
+      }
+      const asset = pickerResult.assets?.[0];
+      if (!asset) {
+        Alert.alert('Error', 'No file selected');
+        return;
+      }
+      await uploadDocumentFile(doc, asset);
+    } catch {
+      Alert.alert('Error', 'Failed to open file picker');
+    }
+  };
+
+  const onSelectDocument = (doc: any) => {
+    Alert.alert('Upload Document', `Choose source for ${doc.label}`, [
+      {text: 'Camera', onPress: () => openPicker(doc, 'camera')},
+      {text: 'Gallery', onPress: () => openPicker(doc, 'gallery')},
+      {text: 'Cancel', style: 'cancel'},
+    ]);
   };
 
   if (loading) {
@@ -210,7 +212,7 @@ const DocumentsScreen = () => {
             <TouchableOpacity
               key={doc.id}
               activeOpacity={0.75}
-              onPress={() => openUpdateModal(doc)}
+              onPress={() => onSelectDocument(doc)}
               style={styles.docCard}>
               <View style={[styles.docIcon, {backgroundColor: `${doc.color}15`}]}>
                 <doc.icon size={22} color={doc.color} strokeWidth={2.5} />
@@ -225,7 +227,11 @@ const DocumentsScreen = () => {
               </View>
 
               <View style={styles.uploadBtn}>
-                <Camera size={18} color="white" strokeWidth={2.5} />
+                {uploadingDocId === doc.id ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <Camera size={18} color="white" strokeWidth={2.5} />
+                )}
               </View>
             </TouchableOpacity>
           );
@@ -238,47 +244,13 @@ const DocumentsScreen = () => {
           <View style={styles.helpTextContainer}>
             <Text style={styles.helpTitle}>Verification Process</Text>
             <Text style={styles.helpSubtitle}>
-              Tap any document to paste/update the URL, then save.
+              Tap any document and upload a clear photo from camera or gallery.
             </Text>
           </View>
         </View>
 
         <View style={{height: 40}} />
       </ScrollView>
-
-      <Modal visible={!!modalDoc} transparent animationType="fade">
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>{modalDoc?.label || 'Update Document'}</Text>
-            <Text style={styles.modalSubtitle}>Enter document URL</Text>
-            <TextInput
-              style={styles.urlInput}
-              value={docUrlInput}
-              onChangeText={setDocUrlInput}
-              autoCapitalize="none"
-              placeholder="https://..."
-              placeholderTextColor="#9CA3AF"
-            />
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.modalSecondaryBtn}
-                onPress={() => {
-                  setModalDoc(null);
-                  setDocUrlInput('');
-                }}>
-                <Text style={styles.modalSecondaryBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.modalPrimaryBtn} onPress={saveDocument}>
-                {saving ? (
-                  <ActivityIndicator size="small" color="white" />
-                ) : (
-                  <Text style={styles.modalPrimaryBtnText}>Save</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 };
@@ -312,16 +284,6 @@ const styles = StyleSheet.create({
   helpTextContainer: {flex: 1},
   helpTitle: {fontSize: 13, fontWeight: '800', color: '#1E40AF', marginBottom: 4},
   helpSubtitle: {fontSize: 12, color: '#3B82F6', lineHeight: 18},
-  modalBackdrop: {flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', paddingHorizontal: 20},
-  modalCard: {backgroundColor: '#fff', borderRadius: 16, padding: 18},
-  modalTitle: {fontSize: 18, fontWeight: '800', color: '#111827'},
-  modalSubtitle: {marginTop: 6, fontSize: 13, color: '#6B7280', fontWeight: '500'},
-  urlInput: {marginTop: 14, borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, color: '#111827', fontWeight: '600'},
-  modalActions: {marginTop: 14, flexDirection: 'row', justifyContent: 'flex-end'},
-  modalSecondaryBtn: {paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, backgroundColor: '#F3F4F6', marginRight: 8},
-  modalSecondaryBtnText: {color: '#111827', fontWeight: '700'},
-  modalPrimaryBtn: {paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, backgroundColor: '#111827', minWidth: 72, alignItems: 'center'},
-  modalPrimaryBtnText: {color: 'white', fontWeight: '700'},
 });
 
 export default DocumentsScreen;

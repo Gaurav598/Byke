@@ -145,14 +145,12 @@ public class UserService {
         if (isGiven) {
             double currentAvg = user.getAverageRatingGiven();
             int totalBookings = user.getTotalBookings();
-            double newAvg = totalBookings <= 0 ? newRating
-                    : ((currentAvg * (totalBookings - 1)) + newRating) / totalBookings;
+            double newAvg = ((currentAvg * (totalBookings - 1)) + newRating) / totalBookings;
             user.setAverageRatingGiven(newAvg);
         } else {
             double currentAvg = user.getAverageRatingReceived();
             int totalBookings = user.getTotalBookings();
-            double newAvg = totalBookings <= 0 ? newRating
-                    : ((currentAvg * (totalBookings - 1)) + newRating) / totalBookings;
+            double newAvg = ((currentAvg * (totalBookings - 1)) + newRating) / totalBookings;
             user.setAverageRatingReceived(newAvg);
         }
 

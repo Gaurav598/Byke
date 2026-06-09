@@ -18,6 +18,7 @@ import MapView, {
 } from 'react-native-maps';
 import {useSelector} from 'react-redux';
 import {RootState} from '../../../store';
+import api from '../../../config/api';
 import {
   getCurrentLocation,
   reverseGeocode,
@@ -42,6 +43,7 @@ import {
   LayoutGrid,
   Crosshair,
   LocateFixed,
+  Route,
 } from 'lucide-react-native';
 
 const FALLBACK_LOCATION = 'Getting your location...';
@@ -67,6 +69,7 @@ const HomeScreen = ({navigation}: any) => {
   const [searchResults, setSearchResults] = useState<PlaceResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [activeBooking, setActiveBooking] = useState<any | null>(null);
 
   // Pickup mode: 'current' = use GPS location, 'pin' = user picks on map
   const [pickupMode, setPickupMode] = useState<'current' | 'pin'>('current');
@@ -160,6 +163,21 @@ const HomeScreen = ({navigation}: any) => {
       }
     };
   }, [initializeLocation]);
+
+  const loadActiveBooking = useCallback(async () => {
+    try {
+      const response = await api.get('/bookings/user/active');
+      setActiveBooking(response.data || null);
+    } catch {
+      setActiveBooking(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadActiveBooking();
+    const interval = setInterval(loadActiveBooking, 7000);
+    return () => clearInterval(interval);
+  }, [loadActiveBooking]);
 
   useEffect(() => {
     if (searchText.trim().length >= 2) {
@@ -397,6 +415,17 @@ const HomeScreen = ({navigation}: any) => {
             </Text>
           </View>
         </View>
+
+        {activeBooking?.id ? (
+          <TouchableOpacity
+            style={styles.ongoingRideBtn}
+            onPress={() =>
+              navigation.navigate('UserTracking', {rideId: String(activeBooking.id)})
+            }>
+            <Route size={16} color="white" strokeWidth={2.8} />
+            <Text style={styles.ongoingRideText}>Ongoing Ride</Text>
+          </TouchableOpacity>
+        ) : null}
 
         {/* Map action buttons — bottom right */}
         <View style={styles.mapActions}>
@@ -704,6 +733,31 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   locationText: {fontSize: 13, fontWeight: '700', color: '#1F2937', flex: 1},
+  ongoingRideBtn: {
+    position: 'absolute',
+    top: 118,
+    right: 16,
+    zIndex: 11,
+    backgroundColor: '#111827',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  ongoingRideText: {
+    color: 'white',
+    fontSize: 11,
+    fontWeight: '900',
+    marginLeft: 7,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
 
   // Map action buttons
   mapActions: {position: 'absolute', bottom: 16, right: 16},

@@ -1,7 +1,6 @@
 import Geolocation from 'react-native-geolocation-service';
 import {Alert, Linking, PermissionsAndroid, Platform} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {GOOGLE_PLACES_API_KEY} from '../config/env';
 
 export interface Location {
   latitude: number;
@@ -252,7 +251,7 @@ export const reverseGeocode = async (
 
   try {
     const response = await fetch(
-      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${GOOGLE_PLACES_API_KEY}`,
+      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=AIzaSyCFjre_DGMoR9jI5dN4Bc8-3CDeEq7ZTW4`,
       controller ? {signal: controller.signal} : undefined,
     );
     const data = await response.json();

@@ -3,7 +3,7 @@ import { Save, Server, Bell, Shield } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const Settings = () => {
-  const [apiUrl, setApiUrl] = useState(import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api');
+  const [apiUrl, setApiUrl] = useState(import.meta.env.VITE_API_BASE_URL);
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -37,7 +37,7 @@ const Settings = () => {
               value={apiUrl}
               onChange={e => setApiUrl(e.target.value)}
             />
-            <p className="text-xs text-gray-400 mt-1">Current: {import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api'}</p>
+            <p className="text-xs text-gray-400 mt-1">Current: {import.meta.env.VITE_API_BASE_URL}</p>
           </div>
         </div>
 

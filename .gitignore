@@ -1,9 +1,7 @@
 # Environment files — NEVER commit these
 .env
-*.env
-backend/.env
-
-
+.env.*
+!.env.example
 # Build outputs
 backend/build/
 backend/.gradle/

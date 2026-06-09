@@ -119,7 +119,11 @@ export const setupNotificationListeners = (
         const lastId = lastSeenId ? parseInt(lastSeenId, 10) : 0;
 
         for (const notif of notifications) {
+          const notifType = String(notif.type || "").toUpperCase();
           if (notif.id > lastId) {
+            if (notifType === "OTP_READY" || notifType === "RIDER_ARRIVED") {
+              continue;
+            }
             onNotification({
               notification: {
                 title: notif.title,

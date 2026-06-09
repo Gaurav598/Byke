@@ -98,9 +98,8 @@ const BidSelectionScreen = () => {
                     return;
                   }
 
-                  navigation.navigate('ActiveBooking', {
-                    bookingId: acceptedBookingId,
-                    otp: booking?.verificationOtp,
+                  navigation.navigate('UserTracking', {
+                    rideId: String(acceptedBookingId),
                   } as never);
                 },
               },

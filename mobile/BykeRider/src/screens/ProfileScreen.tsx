@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Modal,
   TextInput,
+  Linking,
 } from 'react-native';
 import {useSelector, useDispatch} from 'react-redux';
 import {RootState, AppDispatch} from '../store';
@@ -124,7 +125,7 @@ const ProfileScreen = () => {
       icon: HelpCircle,
       label: 'Help & Support',
       color: '#8B5CF6',
-      screen: 'Profile',
+      screen: null,
     },
   ];
 
@@ -166,7 +167,19 @@ const ProfileScreen = () => {
             <TouchableOpacity
               key={index}
               activeOpacity={0.7}
-              onPress={() => navigation.navigate(item.screen)}
+              onPress={async () => {
+                if (item.screen) {
+                  navigation.navigate(item.screen);
+                  return;
+                }
+                const mail = 'mailto:support@byke.app?subject=BYKE Rider Support';
+                const canOpen = await Linking.canOpenURL(mail);
+                if (canOpen) {
+                  await Linking.openURL(mail);
+                } else {
+                  Alert.alert('Support', 'Email support@byke.app');
+                }
+              }}
               style={styles.menuItem}>
               <View style={[styles.menuIcon, {backgroundColor: `${item.color}15`}]}>
                 <item.icon size={20} color={item.color} strokeWidth={2.5} />

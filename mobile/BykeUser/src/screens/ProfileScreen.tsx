@@ -7,6 +7,7 @@ import {
   Alert,
   SafeAreaView,
   Image,
+  Linking,
 } from 'react-native';
 import {useSelector, useDispatch} from 'react-redux';
 import {RootState, AppDispatch} from '../store';
@@ -14,17 +15,18 @@ import {logout} from '../store/slices/authSlice';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   MapPin,
-  CreditCard,
   Bell,
   HelpCircle,
   LogOut,
   ChevronRight,
   Settings,
 } from 'lucide-react-native';
+import {useNavigation} from '@react-navigation/native';
 
 const ProfileScreen = () => {
   const dispatch = useDispatch<AppDispatch>();
   const {user} = useSelector((state: RootState) => state.auth);
+  const navigation = useNavigation<any>();
 
   const handleLogout = () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
@@ -41,11 +43,42 @@ const ProfileScreen = () => {
   };
 
   const menuItems = [
-    {icon: MapPin, label: 'Saved Addresses', color: '#3B82F6'},
-    {icon: CreditCard, label: 'Payment Methods', color: '#10B981'},
-    {icon: Bell, label: 'Notifications', color: '#F59E0B'},
-    {icon: Settings, label: 'Settings', color: '#6B7280'},
-    {icon: HelpCircle, label: 'Help & Support', color: '#8B5CF6'},
+    {
+      icon: MapPin,
+      label: 'My Bookings',
+      color: '#3B82F6',
+      onPress: () => navigation.navigate('MyBookings'),
+    },
+    {
+      icon: Bell,
+      label: 'Notifications',
+      color: '#F59E0B',
+      onPress: () => navigation.navigate('Notifications'),
+    },
+    {
+      icon: Settings,
+      label: 'Settings',
+      color: '#6B7280',
+      onPress: () =>
+        Alert.alert(
+          'Settings',
+          'App settings will be expanded in the next update.',
+        ),
+    },
+    {
+      icon: HelpCircle,
+      label: 'Help & Support',
+      color: '#8B5CF6',
+      onPress: async () => {
+        const mail = 'mailto:support@byke.app?subject=BYKE Support Request';
+        const canOpen = await Linking.canOpenURL(mail);
+        if (canOpen) {
+          await Linking.openURL(mail);
+        } else {
+          Alert.alert('Support', 'Email support@byke.app');
+        }
+      },
+    },
   ];
 
   return (
@@ -67,7 +100,9 @@ const ProfileScreen = () => {
                 </Text>
               </View>
             )}
-            <TouchableOpacity className="absolute -bottom-2 -right-2 bg-black p-3 rounded-2xl border-4 border-white">
+            <TouchableOpacity
+              className="absolute -bottom-2 -right-2 bg-black p-3 rounded-2xl border-4 border-white"
+              onPress={() => navigation.navigate('Notifications')}>
               <Settings size={18} color="white" />
             </TouchableOpacity>
           </View>
@@ -93,6 +128,7 @@ const ProfileScreen = () => {
               <TouchableOpacity
                 key={index}
                 activeOpacity={0.7}
+                onPress={item.onPress}
                 className="flex-row items-center bg-white border border-gray-100 p-5 rounded-3xl shadow-sm shadow-black/5 mb-4">
                 <View
                   className="p-3 rounded-2xl mr-4"

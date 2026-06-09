@@ -4,13 +4,6 @@ import {
   GOOGLE_PLACES_API_KEY as GOOGLE_API_KEY_ENV,
 } from '@env';
 
-const fallback = {
-  API_BASE_URL: 'http://51.21.190.61:8080/api',
-  SOCKET_URL: 'http://51.21.190.61:8080',
-  GOOGLE_PLACES_API_KEY: 'AIzaSyCFjre_DGMoR9jI5dN4Bc8-3CDeEq7ZTW4',
-};
-
-export const API_BASE_URL = API_URL_ENV || fallback.API_BASE_URL;
-export const SOCKET_URL = SOCKET_URL_ENV || fallback.SOCKET_URL;
-export const GOOGLE_PLACES_API_KEY =
-  GOOGLE_API_KEY_ENV || fallback.GOOGLE_PLACES_API_KEY;
+export const API_BASE_URL = API_URL_ENV;
+export const SOCKET_URL = SOCKET_URL_ENV;
+export const GOOGLE_PLACES_API_KEY = GOOGLE_API_KEY_ENV;

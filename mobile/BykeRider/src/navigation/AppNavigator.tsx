@@ -45,15 +45,18 @@ const handleRiderNotificationOpen = async (remoteMessage: any) => {
 
   if (bookingId) {
     if (type === 'NEW_BOOKING') {
-      navigationRef.navigate('AvailableBookings');
+      navigationRef.resetRoot({index: 0, routes: [{name: 'AvailableBookings'}]});
       return;
     }
 
-    navigationRef.navigate('RideTracking', {bookingId: Number(bookingId)});
+    navigationRef.resetRoot({
+      index: 0,
+      routes: [{name: 'RideTracking', params: {bookingId: Number(bookingId)}}],
+    });
     return;
   }
 
-  navigationRef.navigate('Notifications');
+  navigationRef.resetRoot({index: 0, routes: [{name: 'Notifications'}]});
 };
 
 const TabIcon = ({
@@ -133,9 +136,17 @@ const NavigationContent = () => {
     (state: RootState) => state.auth,
   );
 
+  const shouldShowPopup = (remoteMessage: any) => {
+    const notifType = String(remoteMessage?.data?.type || '').toUpperCase();
+    return notifType !== 'OTP_READY' && notifType !== 'RIDER_ARRIVED';
+  };
+
   useEffect(() => {
     const unsubscribe = setupNotificationListeners(
       remoteMessage => {
+        if (!shouldShowPopup(remoteMessage)) {
+          return;
+        }
         showNotification({
           title: remoteMessage.notification?.title || 'New Notification',
           body: remoteMessage.notification?.body || '',

@@ -45,25 +45,40 @@ const routeUserByBooking = async (bookingId: string) => {
     const status = String(booking?.status || '').toUpperCase();
 
     if (status === 'RIDER_ARRIVED') {
-      navigationRef.navigate('RiderApproaching', {bookingId: Number(bookingId)});
+      navigationRef.resetRoot({
+        index: 0,
+        routes: [{name: 'UserTracking', params: {rideId: String(bookingId)}}],
+      });
       return;
     }
     if (status === 'IN_PROGRESS') {
-      navigationRef.navigate('ActiveBooking', {bookingId: Number(bookingId)});
+      navigationRef.resetRoot({
+        index: 0,
+        routes: [{name: 'ActiveBooking', params: {bookingId: Number(bookingId)}}],
+      });
       return;
     }
     if (status === 'COMPLETED') {
-      navigationRef.navigate('RatingScreen', {bookingId: Number(bookingId)});
+      navigationRef.resetRoot({
+        index: 0,
+        routes: [{name: 'RatingScreen', params: {bookingId: Number(bookingId)}}],
+      });
       return;
     }
     if (status === 'ACCEPTED' || status === 'RIDER_EN_ROUTE') {
-      navigationRef.navigate('UserTracking', {rideId: String(bookingId)});
+      navigationRef.resetRoot({
+        index: 0,
+        routes: [{name: 'UserTracking', params: {rideId: String(bookingId)}}],
+      });
       return;
     }
 
-    navigationRef.navigate('UserBids', {rideId: String(bookingId)});
+    navigationRef.resetRoot({
+      index: 0,
+      routes: [{name: 'UserBids', params: {rideId: String(bookingId)}}],
+    });
   } catch {
-    navigationRef.navigate('UserHome');
+    navigationRef.resetRoot({index: 0, routes: [{name: 'UserHome'}]});
   }
 };
 
@@ -78,22 +93,33 @@ const handleUserNotificationOpen = async (remoteMessage: any) => {
 
   if (bookingId) {
     if (type === 'RATE_RIDER') {
-      navigationRef.navigate('RatingScreen', {bookingId: Number(bookingId)});
+      navigationRef.resetRoot({
+        index: 0,
+        routes: [{name: 'RatingScreen', params: {bookingId: Number(bookingId)}}],
+      });
       return;
     }
     await routeUserByBooking(bookingId);
     return;
   }
 
-  navigationRef.navigate('Notifications');
+  navigationRef.resetRoot({index: 0, routes: [{name: 'Notifications'}]});
 };
 
 const NavigationContent = () => {
   const {showNotification} = useNotification();
 
+  const shouldShowPopup = (remoteMessage: any) => {
+    const notifType = String(remoteMessage?.data?.type || '').toUpperCase();
+    return notifType !== 'OTP_READY' && notifType !== 'RIDER_ARRIVED';
+  };
+
   useEffect(() => {
     const unsubscribe = setupNotificationListeners(
       remoteMessage => {
+        if (!shouldShowPopup(remoteMessage)) {
+          return;
+        }
         showNotification({
           title: remoteMessage.notification?.title || 'New Notification',
           body: remoteMessage.notification?.body || '',
