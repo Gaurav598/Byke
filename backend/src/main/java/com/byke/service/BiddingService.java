@@ -198,25 +198,28 @@ public class BiddingService {
         
         List<Rider> nearbyRiders;
         String vehicleType = booking.getVehicleType();
+        Double lat = booking.getPickupLocation() != null ? booking.getPickupLocation().getY() : null;
+        Double lng = booking.getPickupLocation() != null ? booking.getPickupLocation().getX() : null;
+        
         if (vehicleType != null && !vehicleType.isEmpty()) {
             nearbyRiders = riderService.getNearbyAvailableRidersByVehicleType(
-                    booking.getPickupLatitude(),
-                    booking.getPickupLongitude(),
+                    lat,
+                    lng,
                     10.0,
                     vehicleType
             );
             // Fallback: if no riders with matching vehicle type, search all available riders
             if (nearbyRiders.isEmpty()) {
                 nearbyRiders = riderService.getNearbyAvailableRiders(
-                        booking.getPickupLatitude(),
-                        booking.getPickupLongitude(),
+                        lat,
+                        lng,
                         10.0
                 );
             }
         } else {
             nearbyRiders = riderService.getNearbyAvailableRiders(
-                    booking.getPickupLatitude(),
-                    booking.getPickupLongitude(),
+                    lat,
+                    lng,
                     10.0
             );
         }

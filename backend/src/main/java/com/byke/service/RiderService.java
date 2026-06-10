@@ -17,6 +17,9 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
 
 @Service
 @RequiredArgsConstructor
@@ -176,10 +179,12 @@ public class RiderService {
     }
 
     @Transactional
-    public void updateRiderLocation(Long riderId, Double latitude, Double longitude) {
+    public void updateLocation(Long riderId, Double latitude, Double longitude) {
         Rider rider = getRiderById(riderId);
-        rider.setCurrentLatitude(latitude);
-        rider.setCurrentLongitude(longitude);
+        GeometryFactory geometryFactory = new GeometryFactory();
+        Point point = geometryFactory.createPoint(new Coordinate(longitude, latitude));
+        point.setSRID(4326);
+        rider.setCurrentLocation(point);
         rider.setLastLocationUpdate(LocalDateTime.now());
         riderRepository.save(rider);
     }
@@ -290,11 +295,11 @@ public class RiderService {
     }
 
     public List<Rider> getNearbyAvailableRiders(Double latitude, Double longitude, Double radiusKm) {
-        return riderRepository.findNearbyAvailableRiders(latitude, longitude, radiusKm, RiderStatus.AVAILABLE);
+        return riderRepository.findNearbyAvailableRiders(latitude, longitude, radiusKm, RiderStatus.AVAILABLE.name());
     }
 
     public List<Rider> getNearbyAvailableRidersByVehicleType(Double latitude, Double longitude, Double radiusKm, String vehicleType) {
-        return riderRepository.findNearbyAvailableRidersByVehicleType(latitude, longitude, radiusKm, RiderStatus.AVAILABLE, vehicleType);
+        return riderRepository.findNearbyAvailableRidersByVehicleType(latitude, longitude, radiusKm, RiderStatus.AVAILABLE.name(), vehicleType);
     }
 
     public long getRiderCountByStatus(RiderStatus status) {

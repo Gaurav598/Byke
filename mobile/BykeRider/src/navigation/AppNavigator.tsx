@@ -29,6 +29,8 @@ import NotificationsScreen from '../screens/NotificationsScreen';
 import RideTrackingScreen from '../screens/RideTrackingScreen';
 import OTPEntryScreen from '../screens/OTPEntryScreen';
 import ChatScreen from '../screens/ChatScreen';
+import SupportScreen from '../screens/SupportScreen';
+import SubscriptionScreen from '../screens/SubscriptionScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -191,6 +193,16 @@ const NavigationContent = () => {
             <Stack.Screen
               name="Earnings"
               component={EarningsScreen}
+              options={{headerShown: false}}
+            />
+            <Stack.Screen
+              name="SupportScreen"
+              component={SupportScreen}
+              options={{headerShown: false}}
+            />
+            <Stack.Screen
+              name="SubscriptionScreen"
+              component={SubscriptionScreen}
               options={{headerShown: false}}
             />
             <Stack.Screen

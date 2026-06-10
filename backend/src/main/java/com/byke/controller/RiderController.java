@@ -88,7 +88,7 @@ public class RiderController {
         try {
             Long userId = (Long) request.getAttribute("userId");
             Rider rider = riderService.getOrCreateRiderForUser(userId);
-            riderService.updateRiderLocation(rider.getId(), latitude, longitude);
+            riderService.updateLocation(rider.getId(), latitude, longitude);
             return ResponseEntity.ok("Location updated");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -160,8 +160,8 @@ public class RiderController {
         try {
             Rider rider = riderService.getRiderById(riderId);
             java.util.Map<String, Object> location = new java.util.HashMap<>();
-            location.put("latitude", rider.getCurrentLatitude());
-            location.put("longitude", rider.getCurrentLongitude());
+            location.put("latitude", rider.getCurrentLocation() != null ? rider.getCurrentLocation().getY() : null);
+            location.put("longitude", rider.getCurrentLocation() != null ? rider.getCurrentLocation().getX() : null);
             location.put("lastLocationUpdate", rider.getLastLocationUpdate());
             return ResponseEntity.ok(location);
         } catch (Exception e) {

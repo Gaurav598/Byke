@@ -16,6 +16,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
 
 @Service
 @RequiredArgsConstructor
@@ -44,11 +47,11 @@ public class BookingService {
                 .serviceType(bookingData.getServiceType())
                 .status(BookingStatus.BIDDING)
                 .pickupAddress(bookingData.getPickupAddress())
-                .pickupLatitude(bookingData.getPickupLatitude())
-                .pickupLongitude(bookingData.getPickupLongitude())
+                .pickupLocation(createPoint(bookingData.getPickupLocation() != null ? bookingData.getPickupLocation().getY() : null,
+                                          bookingData.getPickupLocation() != null ? bookingData.getPickupLocation().getX() : null))
                 .dropAddress(bookingData.getDropAddress())
-                .dropLatitude(bookingData.getDropLatitude())
-                .dropLongitude(bookingData.getDropLongitude())
+                .dropLocation(createPoint(bookingData.getDropLocation() != null ? bookingData.getDropLocation().getY() : null,
+                                        bookingData.getDropLocation() != null ? bookingData.getDropLocation().getX() : null))
                 .errandDescription(bookingData.getErrandDescription())
                 .errandItemsList(bookingData.getErrandItemsList())
                 .estimatedBudget(bookingData.getEstimatedBudget())
@@ -88,11 +91,9 @@ public class BookingService {
                 .serviceType(serviceType)
                 .status(BookingStatus.BIDDING)
                 .pickupAddress(req.getPickupAddress())
-                .pickupLatitude(req.getPickupLatitude())
-                .pickupLongitude(req.getPickupLongitude())
+                .pickupLocation(createPoint(req.getPickupLatitude(), req.getPickupLongitude()))
                 .dropAddress(req.getDropAddress())
-                .dropLatitude(req.getDropLatitude())
-                .dropLongitude(req.getDropLongitude())
+                .dropLocation(createPoint(req.getDropLatitude(), req.getDropLongitude()))
                 .errandDescription(req.getDescription())
                 .estimatedBudget(req.getEstimatedBudget())
                 .parcelDescription(req.getParcelDescription())
@@ -270,39 +271,25 @@ public class BookingService {
     }
 
     public List<Booking> getAvailableBookings(Double latitude, Double longitude, Double radius) {
-        List<Booking> allBiddingBookings = bookingRepository.findByStatus(BookingStatus.BIDDING);
-        
-        // Default radius to 10km if not provided
-        final double searchRadius = (radius != null) ? radius : 10.0;
-        
         if (latitude == null || longitude == null) {
-            // Return most recent first
+            List<Booking> allBiddingBookings = bookingRepository.findByStatus(BookingStatus.BIDDING);
             return allBiddingBookings.stream()
                     .sorted((b1, b2) -> b2.getCreatedAt().compareTo(b1.getCreatedAt()))
                     .toList();
         }
         
-        return allBiddingBookings.stream()
-                .filter(booking -> {
-                    double distance = calculateDistance(
-                            latitude, longitude,
-                            booking.getPickupLatitude(), booking.getPickupLongitude()
-                    );
-                    return distance <= searchRadius;
-                })
-                .sorted((b1, b2) -> b2.getCreatedAt().compareTo(b1.getCreatedAt()))
-                .toList();
+        final double searchRadiusKm = (radius != null) ? radius : 10.0;
+        double radiusMeters = searchRadiusKm * 1000.0;
+        
+        return bookingRepository.findBookingsWithinRadius(BookingStatus.BIDDING.name(), latitude, longitude, radiusMeters);
     }
 
-    private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
-        final int R = 6371;
-        double latDistance = Math.toRadians(lat2 - lat1);
-        double lonDistance = Math.toRadians(lon2 - lon1);
-        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
-                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
+    private Point createPoint(Double lat, Double lng) {
+        if (lat == null || lng == null) return null;
+        GeometryFactory geometryFactory = new GeometryFactory();
+        Point point = geometryFactory.createPoint(new Coordinate(lng, lat));
+        point.setSRID(4326);
+        return point;
     }
 
     private Double calculateEstimatedFare(ServiceType serviceType, Double distance) {

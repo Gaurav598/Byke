@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:15-alpine
+    image: postgis/postgis:15-3.3-alpine
     container_name: byke-postgres
     env_file:
       - backend/.env
@@ -60,7 +60,7 @@ services:
       - byke-network
 
   backend:
-    image: aditya2004123/byke-backend:latest
+    build: backend
     container_name: byke-backend
     ports:
       - "8080:8080"
@@ -78,6 +78,26 @@ services:
     networks:
       - byke-network
     restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus
+    container_name: byke-prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - byke-network
+
+  grafana:
+    image: grafana/grafana
+    container_name: byke-grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - byke-network
 
 volumes:
   postgres_data:

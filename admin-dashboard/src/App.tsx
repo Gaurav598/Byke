@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard';
 import RidersPage from './pages/RidersPage';
 import BookingsPage from './pages/BookingsPage';
 import UsersPage from './pages/UsersPage';
+import SupportPage from './pages/SupportPage';
 import Layout from './components/Layout';
 
 const queryClient = new QueryClient({
@@ -26,6 +27,7 @@ function App() {
             <Route path="riders" element={<RidersPage />} />
             <Route path="bookings" element={<BookingsPage />} />
             <Route path="users" element={<UsersPage />} />
+            <Route path="support" element={<SupportPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

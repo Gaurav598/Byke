@@ -47,6 +47,19 @@ dependencies {
     
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0'
     
+    // Flyway for DB Migrations
+    implementation 'org.flywaydb:flyway-core'
+    
+    // Hibernate Spatial for PostGIS
+    implementation 'org.hibernate.orm:hibernate-spatial'
+    
+    // Bucket4j for Rate Limiting
+    implementation 'com.bucket4j:bucket4j-core:8.7.0'
+    
+    // Monitoring
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'io.micrometer:micrometer-registry-prometheus'
+    
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     

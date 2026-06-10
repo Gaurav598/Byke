@@ -22,6 +22,8 @@ import {
   requestLocationPermission,
   getCurrentLocation,
 } from '../services/locationService';
+import websocketService from '../services/websocketService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {
   Navigation,
@@ -110,6 +112,10 @@ const RideTrackingScreen = () => {
       ]);
       return;
     }
+    
+    // Connect WebSocket
+    websocketService.connect();
+
     fetchBookingDetails();
     startLocationTracking();
     const interval = setInterval(fetchBookingDetails, 5000);
@@ -119,6 +125,7 @@ const RideTrackingScreen = () => {
         clearLocationWatch(watchIdRef.current);
         watchIdRef.current = null;
       }
+      websocketService.disconnect();
     };
   }, [fetchBookingDetails]);
 
@@ -228,23 +235,40 @@ const RideTrackingScreen = () => {
     }
 
     try {
+      const riderIdStr = await AsyncStorage.getItem('riderId');
       const initial = await getCurrentLocation();
       setCurrentLocation(initial);
-      await api.patch('/rider/location', null, {
-        params: {latitude: initial.latitude, longitude: initial.longitude},
-      });
+      
+      // Send via WebSocket instead of REST
+      if (riderIdStr && resolvedBookingId) {
+        websocketService.publish('/app/rider/location', {
+          riderId: parseInt(riderIdStr, 10),
+          bookingId: resolvedBookingId,
+          latitude: initial.latitude,
+          longitude: initial.longitude
+        });
+      }
     } catch (error) {
       console.log('Initial location error:', error);
     }
 
     watchIdRef.current = watchLocation(
-      ({latitude, longitude}) => {
+      async ({latitude, longitude}) => {
         setCurrentLocation({latitude, longitude});
-        api
-          .patch('/rider/location', null, {
-            params: {latitude, longitude},
-          })
-          .catch(console.log);
+        
+        try {
+          const riderIdStr = await AsyncStorage.getItem('riderId');
+          if (riderIdStr && resolvedBookingId) {
+            websocketService.publish('/app/rider/location', {
+              riderId: parseInt(riderIdStr, 10),
+              bookingId: resolvedBookingId,
+              latitude,
+              longitude
+            });
+          }
+        } catch(e) {
+          console.log('WebSocket publish error', e);
+        }
       },
       error => console.log('Location error:', error),
     );

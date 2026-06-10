@@ -11,6 +11,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import com.stripe.Stripe;
+import com.stripe.model.Event;
+import com.stripe.model.PaymentIntent;
+import com.stripe.net.Webhook;
 
 /**
  * PaymentService - Stripe is currently disabled.
@@ -27,6 +31,9 @@ public class PaymentService {
 
     @Value("${app.subscription.amount}")
     private Double subscriptionAmount;
+    
+    @Value("${stripe.webhook.secret}")
+    private String stripeWebhookSecret;
 
     /**
      * Grants the rider a free subscription immediately without any payment.
@@ -71,8 +78,27 @@ public class PaymentService {
     }
 
     public void handleStripeWebhook(String payload, String signature) {
-        // Stripe is disabled - webhooks are ignored
-        log.info("Stripe webhook received but Stripe is disabled. Ignoring.");
+        try {
+            Event event = Webhook.constructEvent(payload, signature, stripeWebhookSecret);
+            
+            switch (event.getType()) {
+                case "payment_intent.succeeded":
+                    PaymentIntent paymentIntent = (PaymentIntent) event.getDataObjectDeserializer().getObject().orElse(null);
+                    if (paymentIntent != null) {
+                        log.info("PaymentIntent succeeded: {}", paymentIntent.getId());
+                        // Add logic to activate subscription based on metadata
+                    }
+                    break;
+                case "payment_intent.payment_failed":
+                    log.error("Payment failed");
+                    break;
+                default:
+                    log.info("Unhandled event type: {}", event.getType());
+            }
+        } catch (Exception e) {
+            log.error("Webhook signature verification failed: {}", e.getMessage());
+            throw new RuntimeException("Webhook error");
+        }
     }
 
     public String getSubscriptionStatus(Long userId) {

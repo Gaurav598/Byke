@@ -4,6 +4,7 @@ import {Provider, useDispatch, useSelector} from 'react-redux';
 import {store, RootState, AppDispatch} from './src/store';
 import AppNavigator from './src/navigation/AppNavigator';
 import {bootstrapAuth} from './src/store/thunks/authThunks';
+import {StripeProvider} from '@stripe/stripe-react-native';
 import './global.css';
 
 const SPLASH_DURATION_MS = 1000;
@@ -40,7 +41,9 @@ const RootGate = () => {
 
 const App = () => (
   <Provider store={store}>
-    <RootGate />
+    <StripeProvider publishableKey="pk_test_TYooMQauvdEDq54NiTphI7jx">
+      <RootGate />
+    </StripeProvider>
   </Provider>
 );
 

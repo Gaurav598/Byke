@@ -23,6 +23,7 @@ import {
 } from 'lucide-react-native';
 import api from '../config/api';
 import {GOOGLE_PLACES_API_KEY} from '../config/env';
+import websocketService from '../services/websocketService';
 
 const RiderApproachingScreen = ({route, navigation}: any) => {
   const {height: windowHeight} = useWindowDimensions();
@@ -75,8 +76,24 @@ const RiderApproachingScreen = ({route, navigation}: any) => {
   useEffect(() => {
     fetchBookingDetails();
     const interval = setInterval(fetchBookingDetails, 7000);
-    return () => clearInterval(interval);
-  }, [fetchBookingDetails]);
+
+    // Connect WebSocket
+    websocketService.connect(() => {
+      websocketService.subscribe(`/topic/booking/${bookingId}/location`, (locationData: any) => {
+        if (locationData && locationData.latitude && locationData.longitude) {
+          setRiderLocation({
+            latitude: locationData.latitude,
+            longitude: locationData.longitude,
+          });
+        }
+      });
+    });
+
+    return () => {
+      clearInterval(interval);
+      websocketService.disconnect();
+    };
+  }, [fetchBookingDetails, bookingId]);
 
   useEffect(() => {
     if (!booking || !mapRef.current) {

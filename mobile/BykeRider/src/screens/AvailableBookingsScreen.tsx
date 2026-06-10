@@ -19,6 +19,8 @@ import {
   getCurrentLocation as fetchCurrentLocation,
   requestLocationPermission,
 } from '../services/locationService';
+import websocketService from '../services/websocketService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {
   MapPin,
@@ -151,9 +153,26 @@ const AvailableBookingsScreen = ({navigation}: any) => {
       } else {
         await fetchAvailableBookings(28.6139, 77.209);
       }
+
+      // Connect WebSocket and subscribe
+      websocketService.connect(async () => {
+        const riderIdStr = await AsyncStorage.getItem('riderId');
+        if (riderIdStr) {
+          websocketService.subscribe(`/topic/rider/${riderIdStr}/bookings`, (newBooking: any) => {
+            // Re-fetch to get the full updated list
+            if (currentLocation) {
+              fetchAvailableBookings(currentLocation.latitude, currentLocation.longitude);
+            }
+          });
+        }
+      });
     };
     void initialize();
-  }, [fetchAvailableBookings, getCurrentLocation]);
+
+    return () => {
+      websocketService.disconnect();
+    };
+  }, [fetchAvailableBookings, getCurrentLocation, currentLocation]);
 
   useEffect(() => {
     if (currentBooking && mapRef.current) {

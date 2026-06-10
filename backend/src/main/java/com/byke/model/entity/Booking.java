@@ -13,6 +13,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.time.LocalDateTime;
+import org.locationtech.jts.geom.Point;
 
 @Entity
 @Table(name = "bookings")
@@ -46,15 +47,13 @@ public class Booking {
     @Column(nullable = false)
     private String pickupAddress;
     
-    @Column(nullable = false)
-    private Double pickupLatitude;
-    
-    @Column(nullable = false)
-    private Double pickupLongitude;
+    @Column(columnDefinition = "geometry(Point, 4326)")
+    private Point pickupLocation;
     
     private String dropAddress;
-    private Double dropLatitude;
-    private Double dropLongitude;
+    
+    @Column(columnDefinition = "geometry(Point, 4326)")
+    private Point dropLocation;
     
     @Column(length = 2000)
     private String errandDescription;
@@ -126,11 +125,8 @@ public class Booking {
     public ServiceType getServiceType() { return serviceType; }
     public void setServiceType(ServiceType serviceType) { this.serviceType = serviceType; }
     
-    public Double getPickupLatitude() { return pickupLatitude; }
-    public void setPickupLatitude(Double pickupLatitude) { this.pickupLatitude = pickupLatitude; }
-    
-    public Double getPickupLongitude() { return pickupLongitude; }
-    public void setPickupLongitude(Double pickupLongitude) { this.pickupLongitude = pickupLongitude; }
+    public Point getPickupLocation() { return pickupLocation; }
+    public void setPickupLocation(Point pickupLocation) { this.pickupLocation = pickupLocation; }
     
     public String getPickupAddress() { return pickupAddress; }
     public void setPickupAddress(String pickupAddress) { this.pickupAddress = pickupAddress; }
@@ -138,11 +134,8 @@ public class Booking {
     public String getDropAddress() { return dropAddress; }
     public void setDropAddress(String dropAddress) { this.dropAddress = dropAddress; }
     
-    public Double getDropLatitude() { return dropLatitude; }
-    public void setDropLatitude(Double dropLatitude) { this.dropLatitude = dropLatitude; }
-    
-    public Double getDropLongitude() { return dropLongitude; }
-    public void setDropLongitude(Double dropLongitude) { this.dropLongitude = dropLongitude; }
+    public Point getDropLocation() { return dropLocation; }
+    public void setDropLocation(Point dropLocation) { this.dropLocation = dropLocation; }
     
     public Double getEstimatedFare() { return estimatedFare; }
     public void setEstimatedFare(Double estimatedFare) { this.estimatedFare = estimatedFare; }

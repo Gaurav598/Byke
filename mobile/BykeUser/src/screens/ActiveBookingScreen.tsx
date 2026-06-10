@@ -16,6 +16,7 @@ import MapViewDirections from 'react-native-maps-directions';
 import {useRoute, useNavigation} from '@react-navigation/native';
 import api from '../config/api';
 import {GOOGLE_PLACES_API_KEY} from '../config/env';
+import websocketService from '../services/websocketService';
 import {
   Phone,
   MapPin,
@@ -155,8 +156,8 @@ const ActiveBookingScreen = () => {
         if (intervalRef.current) {
           clearInterval(intervalRef.current);
         }
-        Alert.alert('Ride Completed', 'Thank you for using BYKE!', [
-          {text: 'OK', onPress: () => (navigation as any).replace('Home')},
+        Alert.alert('Ride Completed', 'Please complete your payment.', [
+          {text: 'OK', onPress: () => (navigation as any).replace('PaymentScreen', {bookingId})},
         ]);
       } else if (
         newBooking.status === 'CANCELLED_BY_RIDER' &&
@@ -194,10 +195,36 @@ const ActiveBookingScreen = () => {
     fetchBookingDetails();
     fetchUserOtp();
     intervalRef.current = setInterval(fetchBookingDetails, 7000);
+
+    // Connect WebSocket
+    websocketService.connect(() => {
+      websocketService.subscribe(`/topic/booking/${bookingId}/location`, (locationData: any) => {
+        if (locationData && locationData.latitude && locationData.longitude) {
+          // Trigger the animated transition
+          const newLat = locationData.latitude;
+          const newLng = locationData.longitude;
+          
+          Animated.parallel([
+            Animated.timing(animatedLatitude, {
+              toValue: newLat,
+              duration: 2000,
+              useNativeDriver: false,
+            }),
+            Animated.timing(animatedLongitude, {
+              toValue: newLng,
+              duration: 2000,
+              useNativeDriver: false,
+            }),
+          ]).start();
+        }
+      });
+    });
+
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
+      websocketService.disconnect();
     };
   }, [fetchBookingDetails]);
 

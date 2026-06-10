@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Car, FileText } from 'lucide-react';
+import { LayoutDashboard, Users, Car, FileText, MessageSquare } from 'lucide-react';
 
 export default function Layout() {
   const location = useLocation();
@@ -9,6 +9,7 @@ export default function Layout() {
     { path: '/riders', label: 'Riders', icon: Car },
     { path: '/bookings', label: 'Bookings', icon: FileText },
     { path: '/users', label: 'Users', icon: Users },
+    { path: '/support', label: 'Support', icon: MessageSquare },
   ];
 
   return (

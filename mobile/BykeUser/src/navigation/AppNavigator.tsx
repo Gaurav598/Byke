@@ -29,7 +29,9 @@ import BookingScreen from '../screens/BookingScreen';
 import BidSelectionScreen from '../screens/BidSelectionScreen';
 import ActiveBookingScreen from '../screens/ActiveBookingScreen';
 import RiderApproachingScreen from '../screens/RiderApproachingScreen';
+import PaymentScreen from '../screens/PaymentScreen';
 import RatingScreen from '../screens/RatingScreen';
+import SupportScreen from '../screens/SupportScreen';
 
 const Stack = createNativeStackNavigator();
 const navigationRef = createNavigationContainerRef<any>();
@@ -61,7 +63,7 @@ const routeUserByBooking = async (bookingId: string) => {
     if (status === 'COMPLETED') {
       navigationRef.resetRoot({
         index: 0,
-        routes: [{name: 'RatingScreen', params: {bookingId: Number(bookingId)}}],
+        routes: [{name: 'PaymentScreen', params: {bookingId: Number(bookingId)}}],
       });
       return;
     }
@@ -186,8 +188,18 @@ const NavigationContent = () => {
               options={{headerShown: false}}
             />
             <Stack.Screen
+              name="PaymentScreen"
+              component={PaymentScreen}
+              options={{headerShown: false}}
+            />
+            <Stack.Screen
               name="RatingScreen"
               component={RatingScreen}
+              options={{headerShown: false}}
+            />
+            <Stack.Screen
+              name="SupportScreen"
+              component={SupportScreen}
               options={{headerShown: false}}
             />
           </>

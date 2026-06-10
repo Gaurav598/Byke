@@ -12,6 +12,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import org.locationtech.jts.geom.Point;
 
 @Entity
 @Table(name = "riders")
@@ -84,8 +85,8 @@ public class Rider {
     @Builder.Default
     private Double acceptanceRate = 100.0;
     
-    private Double currentLatitude;
-    private Double currentLongitude;
+    @Column(columnDefinition = "geometry(Point, 4326)")
+    private Point currentLocation;
     private LocalDateTime lastLocationUpdate;
     
     private String rejectionReason;
@@ -149,4 +150,7 @@ public class Rider {
     
     public Double getAcceptanceRate() { return acceptanceRate; }
     public void setAcceptanceRate(Double acceptanceRate) { this.acceptanceRate = acceptanceRate; }
+    
+    public Point getCurrentLocation() { return currentLocation; }
+    public void setCurrentLocation(Point currentLocation) { this.currentLocation = currentLocation; }
 }

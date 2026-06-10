@@ -136,6 +136,19 @@ public class NotificationService {
         createNotification(riderUserId, title, message, type, bookingId);
     }
 
+    public void sendSubscriptionExpiring(Long riderId, int daysLeft) {
+        Rider rider = riderRepository.findById(riderId).orElse(null);
+        if (rider != null && rider.getUser() != null) {
+            notifyUserWithType(
+                rider.getUser().getId(),
+                "Subscription Expiring",
+                "Your subscription will expire in " + daysLeft + " days. Renew now to avoid interruption.",
+                "SUBSCRIPTION_WARNING",
+                null
+            );
+        }
+    }
+
     public List<Notification> getUserNotifications(Long userId) {
         return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId);
     }

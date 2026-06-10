@@ -16,25 +16,21 @@ public interface RiderRepository extends JpaRepository<Rider, Long> {
     List<Rider> findByStatus(RiderStatus status);
     long countByStatus(RiderStatus status);
     
-    @Query("SELECT r FROM Rider r WHERE r.status = :status AND " +
-           "r.currentLatitude IS NOT NULL AND r.currentLongitude IS NOT NULL AND " +
-           "(6371 * acos(cos(radians(:latitude)) * cos(radians(r.currentLatitude)) * " +
-           "cos(radians(r.currentLongitude) - radians(:longitude)) + " +
-           "sin(radians(:latitude)) * sin(radians(r.currentLatitude)))) <= :radiusKm")
+    @Query(value = "SELECT * FROM riders r WHERE r.status = :status AND " +
+           "r.current_location IS NOT NULL AND " +
+           "ST_DWithin(r.current_location::geography, ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography, :radiusKm * 1000)", nativeQuery = true)
     List<Rider> findNearbyAvailableRiders(@Param("latitude") Double latitude,
                                            @Param("longitude") Double longitude,
                                            @Param("radiusKm") Double radiusKm,
-                                           @Param("status") RiderStatus status);
+                                           @Param("status") String status);
 
-    @Query("SELECT r FROM Rider r WHERE r.status = :status AND " +
-           "r.vehicleType = :vehicleType AND " +
-           "r.currentLatitude IS NOT NULL AND r.currentLongitude IS NOT NULL AND " +
-           "(6371 * acos(cos(radians(:latitude)) * cos(radians(r.currentLatitude)) * " +
-           "cos(radians(r.currentLongitude) - radians(:longitude)) + " +
-           "sin(radians(:latitude)) * sin(radians(r.currentLatitude)))) <= :radiusKm")
+    @Query(value = "SELECT * FROM riders r WHERE r.status = :status AND " +
+           "r.vehicle_type = :vehicleType AND " +
+           "r.current_location IS NOT NULL AND " +
+           "ST_DWithin(r.current_location::geography, ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography, :radiusKm * 1000)", nativeQuery = true)
     List<Rider> findNearbyAvailableRidersByVehicleType(@Param("latitude") Double latitude,
                                                         @Param("longitude") Double longitude,
                                                         @Param("radiusKm") Double radiusKm,
-                                                        @Param("status") RiderStatus status,
+                                                        @Param("status") String status,
                                                         @Param("vehicleType") String vehicleType);
 }
